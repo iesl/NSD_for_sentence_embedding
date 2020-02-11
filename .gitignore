@@ -1,3 +1,5 @@
+.idea/*
+saves/*
 resources/*
 gen_log/*
 eval_log/*
@@ -114,5 +116,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+.DS_Store
 
 data/*

@@ -17,7 +17,7 @@ import random
 import model as model_code
 import nsd_loss
 
-from src.utils import seed_all_randomness, create_exp_dir, save_checkpoint, load_idx2word_freq, load_emb_file_to_tensor, load_corpus, output_parallel_models, str2bool
+from utils import seed_all_randomness, create_exp_dir, save_checkpoint, load_idx2word_freq, load_emb_file_to_tensor, load_corpus, output_parallel_models, str2bool
 
 parser = argparse.ArgumentParser(description='PyTorch Neural Set Decoder for Sentnece Embedding')
 
@@ -71,12 +71,12 @@ parser.add_argument('--trans_nhid', type=int, default=-1,
 
 ###decoder
 #both
-# parser.add_argument('--de_model', type=str, default='LSTM',
-#                     help='type of decoder model (LSTM, LSTM+TRANS, TRANS+LSTM, TRANS)')
-# parser.add_argument('--de_coeff_model', type=str, default='LSTM',
-#                     help='type of decoder model to predict coefficients (LSTM, TRANS)')
-# parser.add_argument('--n_basis', type=int, default=10,
-#                     help='number of basis we want to predict')
+parser.add_argument('--de_model', type=str, default='LSTM',
+                    help='type of decoder model (LSTM, LSTM+TRANS, TRANS+LSTM, TRANS)')
+parser.add_argument('--de_coeff_model', type=str, default='LSTM',
+                    help='type of decoder model to predict coefficients (LSTM, TRANS)')
+parser.add_argument('--n_basis', type=int, default=10,
+                    help='number of basis we want to predict')
 #parser.add_argument('--linear_mapping_dim', type=int, default=0,
 #                    help='map the input embedding by linear transformation')
 parser.add_argument('--positional_option', type=str, default='linear',
@@ -89,7 +89,7 @@ parser.add_argument('--nhidlast2', type=int, default=-1,
 #TRANS only
 parser.add_argument('--trans_layers', type=int, default=5,
                     help='How many layers we have in transformer. Do not have effect if de_model is LSTM')
-parser.add_argument('--de_en_connection', type=str2bool, nargs='?', default=True,
+parser.add_argument('--de_en_connection', type=str2bool, nargs='?', default=True, 
                     help='If True, using Transformer decoder in our decoder. Otherwise, using Transformer encoder')
 parser.add_argument('--dropout_prob_trans', type=float, default=0.1,
                     help='hidden_dropout_prob and attention_probs_dropout_prob in Transformer')
@@ -261,14 +261,14 @@ if args.nhidlast2 < 0:
 #if args.linear_mapping_dim < 0:
 #    args.linear_mapping_dim = encoder.output_dim
 
-# decoder = model_code.EMB2SEQ(args.de_model.split('+'), args.de_coeff_model, encoder.output_dim, args.nhidlast2, output_emb_size, 1, args.n_basis, positional_option = args.positional_option, dropoutp= args.dropoutp, trans_layers = args.trans_layers, using_memory =  args.de_en_connection, dropout_prob_trans = args.dropout_prob_trans)
+decoder = model_code.EMB2SEQ(args.de_model.split('+'), args.de_coeff_model, encoder.output_dim, args.nhidlast2, output_emb_size, 1, args.n_basis, positional_option = args.positional_option, dropoutp= args.dropoutp, trans_layers = args.trans_layers, using_memory =  args.de_en_connection, dropout_prob_trans = args.dropout_prob_trans)
 #decoder = model_code.EMB2SEQ(args.de_model.split('+'), encoder.output_dim, args.nhidlast2, output_emb_size, 1, args.n_basis, linear_mapping_dim = args.linear_mapping_dim, dropoutp= args.dropoutp, trans_layers = args.trans_layers, using_memory =  args.de_en_connection)
 #decoder = model_code.RNNModel_decoder(args.de_model, args.nhid * 2, args.nhidlast2, output_emb_size, 1, args.n_basis, linear_mapping_dim = args.linear_mapping_dim, dropoutp= 0.5)
 #decoder = model_code.RNNModel_decoder(args.de_model, args.nhid * 2, args.nhidlast2, output_emb_size, 1, args.n_basis, linear_mapping_dim = args.nhid, dropoutp= 0.5)
 
-# if args.de_en_connection and decoder.trans_dim is not None and encoder.output_dim != decoder.trans_dim:
-#     print("dimension mismatch. The encoder output dimension is ", encoder.output_dim, " and the transformer dimension in decoder is ", decoder.trans_dim)
-#     sys.exit(1)
+if args.de_en_connection and decoder.trans_dim is not None and encoder.output_dim != decoder.trans_dim:
+    print("dimension mismatch. The encoder output dimension is ", encoder.output_dim, " and the transformer dimension in decoder is ", decoder.trans_dim)
+    sys.exit(1)
 
 import torch.nn.init as weight_init
 def initialize_weights(net, normal_std):
@@ -284,16 +284,15 @@ def initialize_weights(net, normal_std):
 
 if args.continue_train:
     encoder.load_state_dict(torch.load(os.path.join(args.save, 'encoder.pt')))
-    # decoder.load_state_dict(torch.load(os.path.join(args.save, 'decoder.pt')))
+    decoder.load_state_dict(torch.load(os.path.join(args.save, 'decoder.pt')))
 #load optimizers
 
-# parallel_encoder, parallel_decoder = output_parallel_models(args.cuda, args.single_gpu, encoder)
-parallel_encoder = output_parallel_models(args.cuda, args.single_gpu, encoder)
+parallel_encoder, parallel_decoder = output_parallel_models(args.cuda, args.single_gpu, encoder, decoder)
 
 total_params = sum(x.data.nelement() for x in encoder.parameters())
 logging('Encoder total parameters: {}'.format(total_params))
-# total_params = sum(x.data.nelement() for x in decoder.parameters())
-# logging('Decoder total parameters: {}'.format(total_params))
+total_params = sum(x.data.nelement() for x in decoder.parameters())
+logging('Decoder total parameters: {}'.format(total_params))
 
 ########################
 print("Training")
@@ -303,7 +302,7 @@ print("Training")
 def evaluate(dataloader, external_emb, current_coeff_opt):
     # Turn on evaluation mode which disables dropout.
     encoder.eval()
-    # decoder.eval()
+    decoder.eval()
     total_loss = 0
     total_loss_set = 0
     total_loss_set_reg = 0
@@ -350,7 +349,7 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
 
     
     encoder.train()
-    # decoder.train()
+    decoder.train()
     for i_batch, sample_batched in enumerate(dataloader_train):
         feature, target = sample_batched
         #print(target)
@@ -359,7 +358,7 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
         print(feature.shape)
         print(target.shape)
         optimizer_e.zero_grad()
-        # optimizer_d.zero_grad()
+        optimizer_d.zero_grad()
         #encoder.zero_grad()
         #decoder.zero_grad()
         #output_emb, hidden, output_emb_last = parallel_encoder(feature.t())
@@ -405,12 +404,12 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
         gc.collect()
         
         torch.nn.utils.clip_grad_norm_(encoder.parameters(), args.clip)
-        # torch.nn.utils.clip_grad_norm_(decoder.parameters(), args.clip)
+        torch.nn.utils.clip_grad_norm_(decoder.parameters(), args.clip)
         optimizer_e.step()
         if len(args.emb_file) == 0 and args.target_emb_source == 'ewe':
             encoder.encoder.weight.data[0,:] = 0
             
-        # optimizer_d.step()
+        optimizer_d.step()
 
         if args.update_target_emb:
             #print(external_emb.requires_grad)
@@ -453,16 +452,16 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
 
 if args.optimizer == 'SGD':
     optimizer_e = torch.optim.SGD(encoder.parameters(), lr=args.lr, weight_decay=args.wdecay)
-    # optimizer_d = torch.optim.SGD(decoder.parameters(), lr=args.lr/args.lr2_divide, weight_decay=args.wdecay)
+    optimizer_d = torch.optim.SGD(decoder.parameters(), lr=args.lr/args.lr2_divide, weight_decay=args.wdecay)
 else:
     optimizer_e = torch.optim.Adam(encoder.parameters(), lr=args.lr, weight_decay=args.wdecay)
-    # optimizer_d = torch.optim.Adam(decoder.parameters(), lr=args.lr/args.lr2_divide, weight_decay=args.wdecay)
+    optimizer_d = torch.optim.Adam(decoder.parameters(), lr=args.lr/args.lr2_divide, weight_decay=args.wdecay)
 
 if args.continue_train:
     optimizer_e_state_dict = torch.load(os.path.join(args.save, 'optimizer_e.pt'), map_location=device)
     optimizer_e.load_state_dict(optimizer_e_state_dict)
-    # optimizer_d_state_dict = torch.load(os.path.join(args.save, 'optimizer_d.pt'), map_location=device)
-    # optimizer_d.load_state_dict(optimizer_d_state_dict)
+    optimizer_d_state_dict = torch.load(os.path.join(args.save, 'optimizer_d.pt'), map_location=device)
+    optimizer_d.load_state_dict(optimizer_d_state_dict)
 
 lr = args.lr
 best_val_loss = None
@@ -498,8 +497,7 @@ for epoch in range(1, args.epochs+1):
         logging('-' * 89)
         
         if not best_val_loss or val_loss_important < best_val_loss:
-            # save_checkpoint(encoder, decoder, optimizer_e, optimizer_d, external_emb, args.save)
-            save_checkpoint(encoder, optimizer_e, external_emb, args.save)
+            save_checkpoint(encoder, decoder, optimizer_e, optimizer_d, external_emb, args.save)
             best_val_loss = val_loss_important
             logging('Models Saved')
         else:
@@ -511,5 +509,5 @@ for epoch in range(1, args.epochs+1):
             lr /= 4.0
             for param_group in optimizer_e.param_groups:
                 param_group['lr'] = lr
-            # for param_group in optimizer_d.param_groups:
-            #     param_group['lr'] = lr/args.lr2_divide
+            for param_group in optimizer_d.param_groups:
+                param_group['lr'] = lr/args.lr2_divide

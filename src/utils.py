@@ -325,19 +325,33 @@ def load_emb_file_to_tensor(emb_file, device, idx2word_freq):
     print("OOV token percentage: {}%".format( OOV_freq/float(total_freq)*100 ))
     return external_emb, emb_size, oov_list
 
-def output_parallel_models(use_cuda, single_gpu, encoder, decoder):
+# def output_parallel_models(use_cuda, single_gpu, encoder, decoder):
+#     if use_cuda:
+#         if single_gpu:
+#             parallel_encoder = encoder.cuda()
+#             parallel_decoder = decoder.cuda()
+#         else:
+#             parallel_encoder = nn.DataParallel(encoder, dim=0).cuda()
+#             parallel_decoder = nn.DataParallel(decoder, dim=0).cuda()
+#             #parallel_decoder = decoder.cuda()
+#     else:
+#         parallel_encoder = encoder
+#         parallel_decoder = decoder
+#     return parallel_encoder, parallel_decoder
+
+def output_parallel_models(use_cuda, single_gpu, encoder):
     if use_cuda:
         if single_gpu:
             parallel_encoder = encoder.cuda()
-            parallel_decoder = decoder.cuda()
+            # parallel_decoder = decoder.cuda()
         else:
             parallel_encoder = nn.DataParallel(encoder, dim=0).cuda()
-            parallel_decoder = nn.DataParallel(decoder, dim=0).cuda()
+            # parallel_decoder = nn.DataParallel(decoder, dim=0).cuda()
             #parallel_decoder = decoder.cuda()
     else:
         parallel_encoder = encoder
-        parallel_decoder = decoder
-    return parallel_encoder, parallel_decoder
+        # parallel_decoder = decoder
+    return parallel_encoder
         
 def load_emb_from_path(emb_file_path, device, idx2word_freq):
     if emb_file_path[-3:] == '.pt':

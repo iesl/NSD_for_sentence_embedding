@@ -415,6 +415,8 @@ class SEQ2EMB(nn.Module):
         self.dropoute = dropoute
         self.dropouti = dropouti
 
+        self.linear = nn.Linear
+
     #def init_weights(self):
     #    initrange = 0.1
     #    self.encoder.weight.data.uniform_(-initrange, initrange)

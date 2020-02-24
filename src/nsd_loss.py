@@ -85,7 +85,7 @@ def estimate_coeff_mat_batch_opt(target_embeddings, basis_pred, L1_losss_B, devi
     batch_size = target_embeddings.size(0)
     mr = MR(batch_size, target_embeddings.size(1), basis_pred.size(1), device=device)
     loss_func = torch.nn.MSELoss(reduction='sum')
-    
+
     # opt = torch.optim.LBFGS(mr.parameters(), lr=lr, max_iter=max_iter, max_eval=None, tolerance_grad=1e-05,
     #                         tolerance_change=1e-09, history_size=100, line_search_fn=None)
     #
@@ -102,7 +102,7 @@ def estimate_coeff_mat_batch_opt(target_embeddings, basis_pred, L1_losss_B, devi
     #     return loss
     #
     # opt.step(closure)
-    
+
     if coeff_opt == 'sgd':
         opt = torch.optim.SGD(mr.parameters(), lr=lr, momentum=0, dampening=0, weight_decay=0, nesterov=False)
     elif coeff_opt == 'asgd':
@@ -116,19 +116,19 @@ def estimate_coeff_mat_batch_opt(target_embeddings, basis_pred, L1_losss_B, devi
         opt = torch.optim.Adam(mr.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
     else:
         raise RuntimeError('%s not implemented for coefficient estimation. Please check args.' % coeff_opt)
-    
+
     for i in range(max_iter):
         opt.zero_grad()
         pred = mr(basis_pred)
         loss = loss_func(pred, target_embeddings) / 2
         # loss += L1_losss_B * mr.coeff.abs().sum()
         #loss += L1_losss_B * (mr.coeff.abs().sum() + mr.coeff.diagonal(dim1=1, dim2=2).abs().sum())
-        loss += L1_losss_B * mr.coeff.abs().sum() 
+        loss += L1_losss_B * mr.coeff.abs().sum()
         # print('loss:', loss.item())
         loss.backward()
         opt.step()
         mr.compute_coeff_pos()
-    
+
     return mr.coeff.detach()
 
 
@@ -223,9 +223,9 @@ def compute_loss_set(output_emb, basis_pred, coeff_pred, w_embeddings, target_se
             target_freq_inv_norm =  target_freq_inv / inv_mean
         else:
             target_freq_inv_norm =  target_freq_inv
-        
+
         target_freq_inv_norm_neg = torch.cat( (target_freq_inv_norm[rotate_shift:,:], target_freq_inv_norm[:rotate_shift,:]), dim = 0)
-        
+
         #coeff_mat = estimate_coeff_mat_batch(target_embeddings.cpu(), basis_pred.detach(), L1_losss_B)
         if coeff_opt == 'lc':
             if coeff_opt_algo == 'sgd_bmm':
@@ -251,7 +251,7 @@ def compute_loss_set(output_emb, basis_pred, coeff_pred, w_embeddings, target_se
         coeff_sum_basis_neg = coeff_mat_neg.sum(dim = 1)
         coeff_mean = (coeff_sum_basis.mean() + coeff_sum_basis_neg.mean()) / 2
         #coeff_sum_basis should have dimension (n_batch,n_basis)
-    
+
     pred_embeddings = torch.bmm(coeff_mat, basis_pred)
     pred_embeddings_neg = torch.bmm(coeff_mat_neg, basis_pred)
     #pred_embeddings should have dimension (n_batch, n_set, n_emb_size)
@@ -260,7 +260,7 @@ def compute_loss_set(output_emb, basis_pred, coeff_pred, w_embeddings, target_se
     loss_set_neg = - torch.mean( target_freq_inv_norm_neg * torch.pow( torch.norm( pred_embeddings_neg - target_emb_neg, dim = 2 ), 2) )
     loss_coeff_pred = torch.mean( torch.pow( coeff_sum_basis/coeff_mean - coeff_pred[:,:,0].view_as(coeff_sum_basis), 2 ) )
     loss_coeff_pred += torch.mean( torch.pow( coeff_sum_basis_neg/coeff_mean - coeff_pred[:,:,1].view_as(coeff_sum_basis_neg), 2 ) )
-    
+
     #if random.randint(0,n_batch) == 1:
     #    print("coeff_sum_basis/coeff_mean", coeff_sum_basis/coeff_mean )
     #    print("coeff_sum_basis", coeff_sum_basis[0,:] )
@@ -280,7 +280,7 @@ def compute_loss_set(output_emb, basis_pred, coeff_pred, w_embeddings, target_se
     with torch.no_grad():
         pred_mean = basis_pred_norm.mean(dim = 0, keepdim = True)
         loss_set_reg = - torch.mean( (basis_pred_norm - pred_mean).norm(dim = 2) )
-    
+
     pred_mean = basis_pred_norm.mean(dim = 1, keepdim = True)
     loss_set_div = - torch.mean( (basis_pred_norm - pred_mean).norm(dim = 2) )
 

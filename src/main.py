@@ -17,7 +17,7 @@ import random
 import model as model_code
 import nsd_loss
 
-from src.utils import seed_all_randomness, create_exp_dir, save_checkpoint, load_idx2word_freq, load_emb_file_to_tensor, load_corpus, output_parallel_models, str2bool
+from utils import seed_all_randomness, create_exp_dir, save_checkpoint, load_idx2word_freq, load_emb_file_to_tensor, load_corpus, output_parallel_models, str2bool
 
 parser = argparse.ArgumentParser(description='PyTorch Neural Set Decoder for Sentnece Embedding')
 
@@ -71,12 +71,12 @@ parser.add_argument('--trans_nhid', type=int, default=-1,
 
 ###decoder
 #both
-# parser.add_argument('--de_model', type=str, default='LSTM',
-#                     help='type of decoder model (LSTM, LSTM+TRANS, TRANS+LSTM, TRANS)')
-# parser.add_argument('--de_coeff_model', type=str, default='LSTM',
-#                     help='type of decoder model to predict coefficients (LSTM, TRANS)')
-# parser.add_argument('--n_basis', type=int, default=10,
-#                     help='number of basis we want to predict')
+parser.add_argument('--de_model', type=str, default='LSTM',
+                    help='type of decoder model (LSTM, LSTM+TRANS, TRANS+LSTM, TRANS)')
+parser.add_argument('--de_coeff_model', type=str, default='LSTM',
+                    help='type of decoder model to predict coefficients (LSTM, TRANS)')
+parser.add_argument('--n_basis', type=int, default=10,
+                    help='number of basis we want to predict')
 #parser.add_argument('--linear_mapping_dim', type=int, default=0,
 #                    help='map the input embedding by linear transformation')
 parser.add_argument('--positional_option', type=str, default='linear',

@@ -74,6 +74,7 @@ parser.add_argument('--trans_nhid', type=int, default=-1,
 parser.add_argument('--de_model', type=str, default='LSTM',
                     help='type of decoder model (LSTM, LSTM+TRANS, TRANS+LSTM, TRANS)')
 parser.add_argument('--de_coeff_model', type=str, default='LSTM',
+#parser.add_argument('--de_coeff_model', type=str, default='TRANS',
                     help='type of decoder model to predict coefficients (LSTM, TRANS)')
 parser.add_argument('--n_basis', type=int, default=10,
                     help='number of basis we want to predict')
@@ -94,6 +95,8 @@ parser.add_argument('--de_en_connection', type=str2bool, nargs='?', default=True
 parser.add_argument('--dropout_prob_trans', type=float, default=0.1,
                     help='hidden_dropout_prob and attention_probs_dropout_prob in Transformer')
 #coeff
+parser.add_argument('--neg_sample_w', type=float, default=1,
+                    help='Negative sampling weights')
 parser.add_argument('--w_loss_coeff', type=float, default=0.1,
                     help='weights for coefficient prediction loss')
 parser.add_argument('--L1_losss_B', type=float, default=0.2,
@@ -239,7 +242,8 @@ if args.trans_nhid < 0:
         args.trans_nhid = output_emb_size
 
 
-w_freq = counter_to_tensor(idx2word_freq,device)
+w_freq_user = counter_to_tensor(user_idx2word_freq,device)
+w_freq_tag = counter_to_tensor(tag_idx2word_freq,device)
 
 ########################
 print("Building models")
@@ -323,8 +327,8 @@ def evaluate(dataloader, external_emb, current_coeff_opt):
 
             compute_target_grad = False
             #loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, parallel_decoder, input_emb, target, args.n_basis, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad)
-            loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
-            loss = loss_set + loss_set_neg + args.w_loss_coeff* loss_coeff_pred
+            loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq_user, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
+            loss = loss_set + args.neg_sample_w * loss_set_neg + args.w_loss_coeff* loss_coeff_pred
             batch_size = feature.size(0)
             total_loss += loss * batch_size
             total_loss_set += loss_set * batch_size
@@ -372,7 +376,7 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
         #print(compute_target_grad)
         #print(input_emb.requires_grad)
         #loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, parallel_decoder, input_emb, target, args.n_basis, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad)
-        loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
+        loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq_tag, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
         if torch.isnan(loss_set):
             sys.stdout.write('nan, ')
             continue
@@ -390,9 +394,9 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
         #loss = loss_set + args.w_loss_coeff* loss_coeff_pred
         loss = loss_set + args.w_loss_coeff* loss_coeff_pred
         if -loss_set_neg > 1:
-            loss -= loss_set_neg
+            loss -= args.neg_sample_w * loss_set_neg
         else:
-            loss += loss_set_neg
+            loss += args.neg_sample_w * loss_set_neg
         
         loss *= args.small_batch_size / args.batch_size
         total_loss += loss.item()
@@ -432,9 +436,9 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
             cur_loss_coeff_pred = total_loss_coeff_pred / args.log_interval
             elapsed = time.time() - start_time
             logging('| e {:3d} {:3d} | {:5d}/{:5d} b | lr {:02.2f} | ms/batch {:5.2f} | '
-                    'l {:5.2f} | l_f {:5.4f} + {:5.4f} = {:5.4f} | l_coeff {:5.3f} | reg {:5.2f} | div {:5.2f} '.format(
+                    'l {:5.2f} | l_f {:5.4f} + {:1.1f}*{:5.4f} = {:5.4f} | l_coeff {:5.3f} | reg {:5.2f} | div {:5.2f} '.format(
                 epoch, split_i, i_batch, len(dataloader_train.dataset) // args.batch_size, optimizer_e.param_groups[0]['lr'],
-                elapsed * 1000 / args.log_interval, cur_loss, cur_loss_set, cur_loss_set_neg, cur_loss_set + cur_loss_set_neg, cur_loss_coeff_pred, cur_loss_set_reg, cur_loss_set_div))
+                elapsed * 1000 / args.log_interval, cur_loss, cur_loss_set, args.neg_sample_w, cur_loss_set_neg, cur_loss_set + args.neg_sample_w * cur_loss_set_neg, cur_loss_coeff_pred, cur_loss_set_reg, cur_loss_set_div))
             #if args.coeff_opt == 'maxlc' and current_coeff_opt == 'max' and cur_loss_set + cur_loss_set_neg < -0.02:
             if args.coeff_opt == 'maxlc' and current_coeff_opt == 'max' and cur_loss_set + cur_loss_set_neg < -0.02:
                 current_coeff_opt = 'lc'
@@ -479,9 +483,9 @@ for epoch in range(1, args.epochs+1):
 
         val_loss_all, val_loss_set, val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div = evaluate(dataloader_val, external_emb, current_coeff_opt)
         logging('-' * 89)
-        logging('| end of epoch {:3d} split {:3d} | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f} | l_f {:5.4f} + {:5.4f} = {:5.4f} | l_coeff {:5.2f} | reg {:5.2f} | div {:5.2f} | '
+        logging('| end of epoch {:3d} split {:3d} | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f} | l_f {:5.4f} + {:1.1f}*{:5.4f} = {:5.4f} | l_coeff {:5.2f} | reg {:5.2f} | div {:5.2f} | '
                 .format(epoch, i, (time.time() - epoch_start_time), lr,
-                                           val_loss_all, val_loss_set, val_loss_set_neg, val_loss_set + val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div))
+                                           val_loss_all, val_loss_set, args.neg_sample_w, val_loss_set_neg, val_loss_set + args.neg_sample_w * val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div))
         
         val_loss_important = val_loss_set + val_loss_set_neg
         
@@ -489,9 +493,9 @@ for epoch in range(1, args.epochs+1):
         #dataloader_val_shuffled?
         val_loss_all, val_loss_set, val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div = evaluate(dataloader_val_shuffled, external_emb, current_coeff_opt)
         logging('-' * 89)
-        logging('| Shuffled | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f} | l_f {:5.4f} + {:5.4f} = {:5.4f} | l_coeff {:5.2f} | reg {:5.2f} | div {:5.2f} | '
+        logging('| Shuffled | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f} | l_f {:5.4f} + {:1.1f}*{:5.4f} = {:5.4f} | l_coeff {:5.2f} | reg {:5.2f} | div {:5.2f} | '
                 .format((time.time() - epoch_start_time), lr,
-                                           val_loss_all, val_loss_set, val_loss_set_neg, val_loss_set + val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div))
+                                           val_loss_all, val_loss_set, args.neg_sample_w, val_loss_set_neg, val_loss_set + args.neg_sample_w * val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div))
         logging('-' * 89)
         
         if not best_val_loss or val_loss_important < best_val_loss:

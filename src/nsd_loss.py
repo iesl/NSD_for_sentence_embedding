@@ -227,28 +227,32 @@ def compute_loss_set(output_emb, basis_pred, coeff_pred, w_embeddings, target_se
         target_freq_inv_norm_neg = torch.cat( (target_freq_inv_norm[rotate_shift:,:], target_freq_inv_norm[:rotate_shift,:]), dim = 0)
         
         #coeff_mat = estimate_coeff_mat_batch(target_embeddings.cpu(), basis_pred.detach(), L1_losss_B)
+        basis_pred_detach = basis_pred.detach()
         if coeff_opt == 'lc':
             if coeff_opt_algo == 'sgd_bmm':
-                coeff_mat = estimate_coeff_mat_batch(target_embeddings.detach(), basis_pred.detach(), L1_losss_B, device)
-                coeff_mat_neg = estimate_coeff_mat_batch(target_emb_neg.detach(), basis_pred.detach(), L1_losss_B, device)
+                coeff_mat = estimate_coeff_mat_batch(target_embeddings.detach(), basis_pred_detach, L1_losss_B, device)
+                coeff_mat_neg = estimate_coeff_mat_batch(target_emb_neg.detach(), basis_pred_detach, L1_losss_B, device)
             else:
                 lr_coeff = 0.05
                 iter_coeff = 60
                 with torch.enable_grad():
-                    coeff_mat = estimate_coeff_mat_batch_opt(target_embeddings.detach(), basis_pred.detach(), L1_losss_B, device, coeff_opt_algo, lr_coeff, iter_coeff)
-                    coeff_mat_neg = estimate_coeff_mat_batch_opt(target_emb_neg.detach(), basis_pred.detach(), L1_losss_B, device, coeff_opt_algo, lr_coeff, iter_coeff)
+                    coeff_mat = estimate_coeff_mat_batch_opt(target_embeddings.detach(), basis_pred_detach, L1_losss_B, device, coeff_opt_algo, lr_coeff, iter_coeff)
+                    coeff_mat_neg = estimate_coeff_mat_batch_opt(target_emb_neg.detach(), basis_pred_detach, L1_losss_B, device, coeff_opt_algo, lr_coeff, iter_coeff)
         else:
-            coeff_mat = estimate_coeff_mat_batch_max(target_embeddings.detach(), basis_pred.detach(), device)
+            coeff_mat = estimate_coeff_mat_batch_max(target_embeddings.detach(), basis_pred_detach, device)
             #coeff_mat = estimate_coeff_mat_batch_max_iter(target_embeddings, basis_pred.detach(), device)
-            coeff_mat_neg = estimate_coeff_mat_batch_max(target_emb_neg.detach(), basis_pred.detach(), device)
+            coeff_mat_neg = estimate_coeff_mat_batch_max(target_emb_neg.detach(), basis_pred_detach, device)
     #if coeff_opt == 'lc' and  coeff_opt_algo != 'sgd_bmm':
     #    lr_coeff = 0.05
     #    iter_coeff = 60
     #    coeff_mat = estimate_coeff_mat_batch_opt(target_embeddings.detach(), basis_pred.detach(), L1_losss_B, device, coeff_opt_algo, lr_coeff, iter_coeff)
     #    coeff_mat_neg = estimate_coeff_mat_batch_opt(target_emb_neg.detach(), basis_pred.detach(), L1_losss_B, device, coeff_opt_algo, lr_coeff, iter_coeff)
+    basis_pred_mag = basis_pred.norm(dim = 2, keepdim=True)
+    basis_pred_norm = basis_pred / basis_pred_mag
     with torch.no_grad():
-        coeff_sum_basis = coeff_mat.sum(dim = 1)
-        coeff_sum_basis_neg = coeff_mat_neg.sum(dim = 1)
+        #basis_pred_norm = basis_pred_detach.norm(dim=2) 
+        coeff_sum_basis = coeff_mat.sum(dim = 1) / basis_pred_mag.squeeze(dim = 2)
+        coeff_sum_basis_neg = coeff_mat_neg.sum(dim = 1) / basis_pred_mag.squeeze(dim = 2)
         coeff_mean = (coeff_sum_basis.mean() + coeff_sum_basis_neg.mean()) / 2
         #coeff_sum_basis should have dimension (n_batch,n_basis)
     
@@ -276,7 +280,6 @@ def compute_loss_set(output_emb, basis_pred, coeff_pred, w_embeddings, target_se
         print("pred_embeddings", pred_embeddings.norm(dim = 2) )
         print("target_embeddings", target_embeddings.norm(dim = 2) )
 
-    basis_pred_norm = basis_pred / basis_pred.norm(dim = 2, keepdim=True)
     with torch.no_grad():
         pred_mean = basis_pred_norm.mean(dim = 0, keepdim = True)
         loss_set_reg = - torch.mean( (basis_pred_norm - pred_mean).norm(dim = 2) )

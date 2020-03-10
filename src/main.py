@@ -285,16 +285,15 @@ def initialize_weights(net, normal_std):
 if args.continue_train:
     encoder.load_state_dict(torch.load(os.path.join(args.save, 'encoder.pt')))
     # decoder.load_state_dict(torch.load(os.path.join(args.save, 'decoder.pt')))
-#load optimizers
 
+#load optimizers
 # parallel_encoder, parallel_decoder = output_parallel_models(args.cuda, args.single_gpu, encoder)
 parallel_encoder = output_parallel_models(args.cuda, args.single_gpu, encoder)
 
 total_params = sum(x.data.nelement() for x in encoder.parameters())
 logging('Encoder total parameters: {}'.format(total_params))
-# total_params = sum(x.data.nelement() for x in decoder.parameters())
-# logging('Decoder total parameters: {}'.format(total_params))
 
+criterion = nn.MSELoss().cuda()
 ########################
 print("Training")
 ########################
@@ -306,110 +305,49 @@ def evaluate(dataloader, external_emb, current_coeff_opt):
     # decoder.eval()
     total_loss = 0
     total_loss_set = 0
-    total_loss_set_reg = 0
-    total_loss_set_div = 0
-    total_loss_set_neg = 0
-    total_loss_coeff_pred = 0.
     with torch.no_grad():
         for i_batch, sample_batched in enumerate(dataloader):
             feature, target = sample_batched
-            
-            #output_emb, hidden, output_emb_last = parallel_encoder(feature.t())
-            output_emb_last, output_emb = parallel_encoder(feature)
-            basis_pred, coeff_pred =  parallel_decoder(output_emb_last, output_emb, predict_coeff_sum = True)
-            if len(args.emb_file) > 0 or args.target_emb_source == 'rand':
-                input_emb = external_emb
-            elif args.target_emb_source == 'ewe':
-                input_emb = encoder.encoder.weight.detach()
+            output_emb_last, _ = parallel_encoder(feature)
 
             compute_target_grad = False
-            #loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, parallel_decoder, input_emb, target, args.n_basis, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad)
-            loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
-            loss = loss_set + loss_set_neg + args.w_loss_coeff* loss_coeff_pred
-            batch_size = feature.size(0)
-            total_loss += loss * batch_size
-            total_loss_set += loss_set * batch_size
-            total_loss_set_reg += loss_set_reg * batch_size
-            total_loss_set_div += loss_set_div * batch_size
-            total_loss_set_neg += loss_set_neg * batch_size
-            total_loss_coeff_pred += loss_coeff_pred * batch_size
+            loss = criterion(output_emb_last, target)
+            total_loss += loss * args.batch_size
+            # total_loss_set += loss_set * batch_size
 
-    return total_loss.item() / len(dataloader.dataset), total_loss_set.item() / len(dataloader.dataset), \
-           total_loss_set_neg.item() / len(dataloader.dataset), total_loss_coeff_pred.item() / len(dataloader.dataset), \
-           total_loss_set_reg.item() / len(dataloader.dataset), total_loss_set_div.item() / len(dataloader.dataset)
-
+    return total_loss / len(dataloader.dataset)
 
 def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split_i):
     start_time = time.time()
     total_loss = 0.
-    total_loss_set = 0.
-    total_loss_set_reg = 0.
-    total_loss_set_div = 0.
-    total_loss_set_neg = 0.
-    total_loss_coeff_pred = 0.
+    # total_loss_set = 0.
+    # total_loss_set_reg = 0.
+    # total_loss_set_div = 0.
+    # total_loss_set_neg = 0.
+    # total_loss_coeff_pred = 0.
 
     
     encoder.train()
     # decoder.train()
     for i_batch, sample_batched in enumerate(dataloader_train):
         feature, target = sample_batched
-        #print(target)
-        #print(feature.size())
-        #print(target.size())
-        print(feature.shape)
-        print(target.shape)
         optimizer_e.zero_grad()
-        # optimizer_d.zero_grad()
-        #encoder.zero_grad()
-        #decoder.zero_grad()
-        #output_emb, hidden, output_emb_last = parallel_encoder(feature.t())
-        #output_emb, hidden, output_emb_last = parallel_encoder(feature)
-        output_emb_last, output_emb = parallel_encoder(feature)
-        basis_pred, coeff_pred =  parallel_decoder(output_emb_last, output_emb, predict_coeff_sum = True)
-        if len(args.emb_file) > 0  or args.target_emb_source == 'rand':
-            input_emb = external_emb
-        elif args.target_emb_source == 'ewe':
-            input_emb = encoder.encoder.weight.detach()
-            #compute_target_grad = False
-        compute_target_grad = args.update_target_emb
-        #print(compute_target_grad)
-        #print(input_emb.requires_grad)
-        #loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, parallel_decoder, input_emb, target, args.n_basis, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad)
-        loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
-        if torch.isnan(loss_set):
-            sys.stdout.write('nan, ')
-            continue
-        total_loss_set += loss_set.item() * args.small_batch_size / args.batch_size
-        total_loss_set_reg += loss_set_reg.item() * args.small_batch_size / args.batch_size
-        total_loss_set_div += loss_set_div.item() * args.small_batch_size / args.batch_size
-        total_loss_set_neg += loss_set_neg.item() * args.small_batch_size / args.batch_size
-        total_loss_coeff_pred += loss_coeff_pred.item() * args.small_batch_size / args.batch_size
-        
-        #BT_nonneg = torch.max( torch.tensor([0.0], device=device), BT )
-        #loss = loss_set + loss_set_neg + args.w_loss_coeff* loss_coeff_pred
-        #loss = 9 * torch.max( torch.tensor([0.7], device=device), loss_set) +  loss_set + loss_set_neg + args.w_loss_coeff* loss_coeff_pred + 0.01 * loss_set_div
-        #loss = 4 * torch.max( torch.tensor([0.7], device=device), loss_set) + 4 * torch.max( torch.tensor([0.7], device=device), -loss_set_neg) +  loss_set + loss_set_neg + args.w_loss_coeff* loss_coeff_pred
-        #loss = loss_set + 0.9 * loss_set_neg + args.w_loss_coeff* loss_coeff_pred
-        #loss = loss_set + args.w_loss_coeff* loss_coeff_pred
-        loss = loss_set + args.w_loss_coeff* loss_coeff_pred
-        if -loss_set_neg > 1:
-            loss -= loss_set_neg
-        else:
-            loss += loss_set_neg
-        
+        output_emb_last, _ = parallel_encoder(feature)
+        loss = criterion(output_emb_last, target)
+
         loss *= args.small_batch_size / args.batch_size
         total_loss += loss.item()
 
         loss.backward()
 
         gc.collect()
-        
+
         torch.nn.utils.clip_grad_norm_(encoder.parameters(), args.clip)
         # torch.nn.utils.clip_grad_norm_(decoder.parameters(), args.clip)
         optimizer_e.step()
         if len(args.emb_file) == 0 and args.target_emb_source == 'ewe':
-            encoder.encoder.weight.data[0,:] = 0
-            
+            encoder.encoder.weight.data[0, :] = 0
+
         # optimizer_d.step()
 
         if args.update_target_emb:
@@ -428,26 +366,16 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
 
         if i_batch % args.log_interval == 0 and i_batch > 0:
             cur_loss = total_loss / args.log_interval
-            cur_loss_set = total_loss_set / args.log_interval
-            cur_loss_set_reg = total_loss_set_reg / args.log_interval
-            cur_loss_set_div = total_loss_set_div / args.log_interval
-            cur_loss_set_neg = total_loss_set_neg / args.log_interval
-            cur_loss_coeff_pred = total_loss_coeff_pred / args.log_interval
             elapsed = time.time() - start_time
             logging('| e {:3d} {:3d} | {:5d}/{:5d} b | lr {:02.2f} | ms/batch {:5.2f} | '
-                    'l {:5.2f} | l_f {:5.4f} + {:5.4f} = {:5.4f} | l_coeff {:5.3f} | reg {:5.2f} | div {:5.2f} '.format(
+                    'l {:5.2f}'.format(
                 epoch, split_i, i_batch, len(dataloader_train.dataset) // args.batch_size, optimizer_e.param_groups[0]['lr'],
-                elapsed * 1000 / args.log_interval, cur_loss, cur_loss_set, cur_loss_set_neg, cur_loss_set + cur_loss_set_neg, cur_loss_coeff_pred, cur_loss_set_reg, cur_loss_set_div))
+                elapsed * 1000 / args.log_interval, cur_loss))
             #if args.coeff_opt == 'maxlc' and current_coeff_opt == 'max' and cur_loss_set + cur_loss_set_neg < -0.02:
-            if args.coeff_opt == 'maxlc' and current_coeff_opt == 'max' and cur_loss_set + cur_loss_set_neg < -0.02:
+            if args.coeff_opt == 'maxlc' and current_coeff_opt == 'max':
                 current_coeff_opt = 'lc'
                 print("switch to lc")
             total_loss = 0.
-            total_loss_set = 0.
-            total_loss_set_reg = 0.
-            total_loss_set_div = 0.
-            total_loss_set_neg = 0.
-            total_loss_coeff_pred = 0.
             start_time = time.time()
     return current_coeff_opt
 

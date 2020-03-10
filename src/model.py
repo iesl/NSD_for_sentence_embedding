@@ -415,7 +415,8 @@ class SEQ2EMB(nn.Module):
         self.dropoute = dropoute
         self.dropouti = dropouti
 
-        self.linear = nn.Linear
+        # print(external_emb.size())
+        self.fc = nn.Linear(self.output_dim, max_sent_len)
 
     #def init_weights(self):
     #    initrange = 0.1
@@ -437,9 +438,10 @@ class SEQ2EMB(nn.Module):
         emb = self.lockdrop(emb, self.dropouti if self.use_dropout else 0)
         #emb = self.drop(self.encoder(input))
         
-        output_last, output = self.seq_summarizer(emb)
+        emb_last, emb = self.seq_summarizer(emb)
+        output_last = self.fc(emb_last)
         #return output, hidden, output_last #If we want to output output, hidden, we need to shift the batch dimension to the first dim in order to use nn.DataParallel correctly
-        return output_last, output.permute(1,0,2)
+        return output_last, emb.permute(1,0,2)
 
 
 class RNNModel(nn.Module):

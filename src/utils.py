@@ -237,10 +237,11 @@ def load_testing_sent(dict_path, input_path, max_sent_len, eval_bsz, device):
 
 
 def load_corpus(data_path, train_bsz, eval_bsz, device, tensor_folder = "tensors", training_file = "train.pt", split_num = 1, copy_training = False, skip_training = False, want_to_shuffle_val = True):
-    train_corpus_name = data_path + "/"+tensor_folder+"/" + training_file
-    val_org_corpus_name = data_path +"/"+tensor_folder+"/val_org.pt"
-    val_shuffled_corpus_name = data_path + "/"+tensor_folder+"/val_shuffled.pt"
-    dictionary_input_name = data_path + "dictionary_index"
+    train_corpus_name = os.path.join(os.path.join(data_path, tensor_folder), training_file)
+    val_org_corpus_name = os.path.join(os.path.join(data_path ,tensor_folder), "val_org.pt")
+    val_shuffled_corpus_name =os.path.join(os.path.join(data_path ,tensor_folder), "val_shuffled.pt")
+    dictionary_input_name = os.path.join(data_path, "dictionary_index")
+    # dictionary_input_name = os.path.join(data_path, "../dictionary_index")
 
     with open(dictionary_input_name) as f_in:
         idx2word_freq = load_idx2word_freq(f_in)

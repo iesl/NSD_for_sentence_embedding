@@ -377,7 +377,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
     if args.method_set != 'bert':
         sent_embs_tensor, sent_embs_w_tensor, all_words_tensor, w_emb_tensors_list, sent_lens, freq_prob_tensor, w_freq_tensor = article_to_embs(article, word_norm_emb, word_d2_idx_freq, device)
         cit_sent_embs_tensor, cit_sent_embs_w_tensor, cit_all_words_tensor, cit_w_emb_tensors_list, cit_sent_lens, cit_freq_prob_tensor, cit_w_freq_tensor = article_to_embs(citations, word_norm_emb, word_d2_idx_freq, device)
-        freq_w_4_tensor = alpha / (alpha + freq_prob_tensor) # would this change for citations??
+        freq_w_4_tensor = alpha / (alpha + freq_prob_tensor)
         ## TODO: do it twice, one for article and one for citations
     if 'bert' in args.method_set:
         sent_embs_tensor_bert, all_words_tensor_bert, w_emb_tensors_list_bert, sent_lens_bert, freq_prob_tensor_bert, w_freq_tensor_bert = article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device)
@@ -410,7 +410,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         #m_d2_sent_ranks['sent_emb_freq_4_cluster_word'] = select_by_clustering_words(sent_embs_w_tensor, all_words_tensor, top_k_max, device, w_freq_tensor)
         #m_d2_sent_ranks['sent_emb_freq_4_cluster_word_freq_4'] = select_by_clustering_words(sent_embs_w_tensor, all_words_tensor, top_k_max, device, w_freq_tensor*freq_w_4_tensor)
     if basis_coeff_list is not None:
-        assert len(basis_coeff_list) == len(article)
+        assert len(basis_coeff_list) == len(citations)
         m_d2_sent_ranks['ours'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device)
         m_d2_sent_ranks['ours_freq_4'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens = None, freq_w_tensor = freq_w_4_tensor)
     
@@ -471,12 +471,15 @@ for file_name in stories:
             if 'ours' in args.method_set:
                 # TODO:: article to citations
                 dataloader_test = load_testing_article_summ(word_d2_idx_freq, article, args.max_sent_len, args.batch_size, device)
+                cit_dataloader_test = load_testing_article_summ(word_d2_idx_freq, citations, args.max_sent_len, args.batch_size, device)
                 #sent_d2_basis, article_proc = utils_testing.output_sent_basis_summ(dataloader_test, org_sent_list, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
                 basis_coeff_list, article_proc = utils_testing.output_sent_basis_summ(dataloader_test, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
+                cit_basis_coeff_list, citation_proc = utils_testing.output_sent_basis_summ(cit_dataloader_test, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
             else:
-                basis_coeff_list = None
+                cit_basis_coeff_listbasis_coeff_list = None
                 article_proc = article
-            fname_d2_sent_rank[file_name] = rank_sents(basis_coeff_list, article_proc, word_norm_emb, word_d2_idx_freq, args.top_k_max, device)
+                citation_proc = citations
+            fname_d2_sent_rank[file_name] = rank_sents(cit_basis_coeff_list, article_proc, citation_proc, word_norm_emb, word_d2_idx_freq, args.top_k_max, device)
 
 
 with open(args.outf_vis, 'w') as f_out:
@@ -526,22 +529,24 @@ for top_k in range(1,args.top_k_max+1):
         for i in range(len(fname_list)):
             file_name = fname_list[i]
             article = article_list[i]
+            citations = citation_list[i]
             #if len(article) <= top_k:
             #    continue
             top_k_art_len = min(len(article), top_k)
+            top_k_cit_len = min(len(citations), top_k)
             if method == 'first':
-                sent_rank = list(range(top_k_art_len))
+                sent_rank = list(range(top_k_cit_len))
             elif method == 'rnd':
-                sent_rank = np.random.choice(len(article), top_k_art_len).tolist()
+                sent_rank = np.random.choice(len(citations), top_k_cit_len).tolist()
             else:
                 if method not in fname_d2_sent_rank[file_name]:
                     continue
                 sent_rank = fname_d2_sent_rank[file_name][method]
             if method in not_inclusive_methods:
                 ## TODO:: article -> citation
-                selected_sent = [article[s] for s in sent_rank[top_k_art_len-1]]
+                selected_sent = [citations[s] for s in sent_rank[top_k_cit_len-1]]
             else:
-                selected_sent = [article[s] for s in sent_rank[:top_k_art_len]]
+                selected_sent = [citations[s] for s in sent_rank[:top_k_cit_len]]
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1

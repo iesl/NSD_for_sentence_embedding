@@ -147,7 +147,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
                     w_idx, freq, freq_prob = word_d2_idx_freq[w]
                     freq_prob_list.append(freq_prob)
                 else:
-                    freq_prob_list.append(0) 
+                    freq_prob_list.append(0)
     if word_d2_idx_freq is None:
         freq_prob_tensor = None
     else:
@@ -178,7 +178,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
                 w_emb = encoded_layers_batch[inner_i, :sent_len, :]
                 w_emb_list.append(w_emb)
                 sent_emb_list.append(avg_emb)
-    
+
     return sent_emb_list, w_emb_list, sent_lens, freq_prob_tensor
 
 word_d2_idx_freq = None
@@ -222,7 +222,7 @@ def load_tokenized_story(f_in): ## TODO // add citation sentences
     return article, abstract, citations
 
 
-def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device): 
+def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device):
     sent_emb_list, w_emb_tensors_list, sent_lens_list, freq_prob_tensor = run_bert(article, device, bert_tokenizer, bert_model, word_d2_idx_freq)
     sent_embs_tensor = torch.cat(sent_emb_list, dim=0)
     all_words_tensor = torch.cat(w_emb_tensors_list, dim=0)
@@ -230,10 +230,10 @@ def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, 
     all_words_tensor = all_words_tensor / (0.000000000001 + all_words_tensor.norm(dim = 1, keepdim=True) )
 
     sent_lens = torch.tensor(sent_lens_list, dtype=torch.float32 , device = device)
-    
+
     num_word = all_words_tensor.size(0)
     w_freq_tensor = torch.ones(1,num_word,device = device)
-        
+
     #emb_size = sent_emb_list[0].size(1)
     #num_sent = len(article)
     #sent_embs_tensor = torch.zeros(num_sent, emb_size, device = device)
@@ -303,7 +303,7 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens = None):
 
         max_sim = max_sim + sent_sim_improvement[selected_sent,:]
         max_sent_idx_list.append(selected_sent.item())
-    
+
     return max_sent_idx_list
 
 def select_by_avg_dist_boost( sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor = None):
@@ -373,7 +373,7 @@ def select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, de
 
 def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_freq, top_k_max, device):
     alpha = 0.0001
-    m_d2_sent_ranks = {} 
+    m_d2_sent_ranks = {}
     if args.method_set != 'bert':
         sent_embs_tensor, sent_embs_w_tensor, all_words_tensor, w_emb_tensors_list, sent_lens, freq_prob_tensor, w_freq_tensor = article_to_embs(article, word_norm_emb, word_d2_idx_freq, device)
         cit_sent_embs_tensor, cit_sent_embs_w_tensor, cit_all_words_tensor, cit_w_emb_tensors_list, cit_sent_lens, cit_freq_prob_tensor, cit_w_freq_tensor = article_to_embs(citations, word_norm_emb, word_d2_idx_freq, device)
@@ -400,7 +400,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
     if 'cluster' in args.method_set:
         #m_d2_sent_ranks['sent_emb_cluster_sent'] = select_by_clustering_sents(sent_embs_tensor, top_k_max, device)
         #m_d2_sent_ranks['sent_emb_cluster_sent_len'] = select_by_clustering_sents(sent_embs_tensor, top_k_max, device, sent_lens)
-        
+
         #m_d2_sent_ranks['sent_emb_cluster_sent'] = select_by_clustering_words(sent_embs_tensor, sent_embs_tensor, top_k_max, device)
         #m_d2_sent_ranks['sent_emb_cluster_sent_len'] = select_by_clustering_words(sent_embs_tensor, sent_embs_tensor, top_k_max, device, sent_lens)
         m_d2_sent_ranks['sent_emb_cluster_word'] = select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, device, w_freq_tensor)
@@ -413,7 +413,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         assert len(basis_coeff_list) == len(citations)
         m_d2_sent_ranks['ours'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device)
         m_d2_sent_ranks['ours_freq_4'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens = None, freq_w_tensor = freq_w_4_tensor)
-    
+
     return m_d2_sent_ranks
 
 def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir_for_pyrouge):
@@ -446,8 +446,8 @@ def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir
     cmd = 'rm -r '+ temp_dir_for_pyrouge +'*'
     os.system(cmd)
     return output
-            
-    
+
+
 
 fname_d2_sent_rank = {}
 fname_list = []
@@ -461,13 +461,14 @@ for file_name in stories:
     sys.stdout.flush()
     #base_name = os.path.basename(file_name)
     with open(args.input + '/' + file_name) as f_in:
-        
+
         fname_list.append(file_name)
         article, abstract, citations = load_tokenized_story(f_in)
         article_list.append(article)
         abstract_list.append(abstract)
         citation_list.append(citations)
         with torch.no_grad():
+            article_proc = article
             if 'ours' in args.method_set:
                 # TODO:: article to citations
                 dataloader_test = load_testing_article_summ(word_d2_idx_freq, article, args.max_sent_len, args.batch_size, device)
@@ -476,8 +477,8 @@ for file_name in stories:
                 basis_coeff_list, article_proc = utils_testing.output_sent_basis_summ(dataloader_test, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
                 cit_basis_coeff_list, citation_proc = utils_testing.output_sent_basis_summ(cit_dataloader_test, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
             else:
-                cit_basis_coeff_listbasis_coeff_list = None
-                article_proc = article
+                cit_basis_coeff_list = None
+                # article_proc = article
                 citation_proc = citations
             fname_d2_sent_rank[file_name] = rank_sents(cit_basis_coeff_list, article_proc, citation_proc, word_norm_emb, word_d2_idx_freq, args.top_k_max, device)
 

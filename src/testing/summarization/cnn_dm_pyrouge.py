@@ -395,8 +395,8 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         m_d2_sent_ranks['sent_emb_dist_avg'] = select_by_avg_dist_boost( cit_sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device )
         m_d2_sent_ranks['sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost( cit_sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_4_tensor )
         m_d2_sent_ranks['sent_emb_freq_4_dist_avg_freq_4'] = select_by_avg_dist_boost( cit_sent_embs_w_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_4_tensor )
-        m_d2_sent_ranks['norm_w_in_sent'] = select_by_topics( cit_w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens)
-        m_d2_sent_ranks['norm_w_in_sent_freq_4'] = select_by_topics( cit_w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens, freq_w_tensor = freq_w_4_tensor)
+        m_d2_sent_ranks['norm_w_in_sent'] = select_by_topics( cit_w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, cit_sent_lens)
+        m_d2_sent_ranks['norm_w_in_sent_freq_4'] = select_by_topics( cit_w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, cit_sent_lens, freq_w_tensor = freq_w_4_tensor)
     if 'cluster' in args.method_set:
         #m_d2_sent_ranks['sent_emb_cluster_sent'] = select_by_clustering_sents(sent_embs_tensor, top_k_max, device)
         #m_d2_sent_ranks['sent_emb_cluster_sent_len'] = select_by_clustering_sents(sent_embs_tensor, top_k_max, device, sent_lens)
@@ -406,7 +406,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         m_d2_sent_ranks['sent_emb_cluster_word'] = select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, device, w_freq_tensor)
         m_d2_sent_ranks['sent_emb_cluster_word_freq_4'] = select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, device, w_freq_tensor*freq_w_4_tensor)
         m_d2_sent_ranks['sent_emb_freq_4_cluster_sent'] = select_by_clustering_words(sent_embs_w_tensor, sent_embs_w_tensor, top_k_max, device)
-        m_d2_sent_ranks['sent_emb_freq_4_cluster_sent_len'] = select_by_clustering_words(sent_embs_w_tensor, sent_embs_w_tensor, top_k_max, device, sent_lens)
+        m_d2_sent_ranks['sent_emb_freq_4_cluster_sent_len'] = select_by_clustering_words(sent_embs_w_tensor, sent_embs_w_tensor, top_k_max, device, cit_sent_lens)
         #m_d2_sent_ranks['sent_emb_freq_4_cluster_word'] = select_by_clustering_words(sent_embs_w_tensor, all_words_tensor, top_k_max, device, w_freq_tensor)
         #m_d2_sent_ranks['sent_emb_freq_4_cluster_word_freq_4'] = select_by_clustering_words(sent_embs_w_tensor, all_words_tensor, top_k_max, device, w_freq_tensor*freq_w_4_tensor)
     if basis_coeff_list is not None:

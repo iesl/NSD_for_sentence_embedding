@@ -215,7 +215,7 @@ def load_tokenized_story(f_in): ## TODO // add citation sentences
         if next_is_abstract:
             abstract.append([line])
         elif next_is_citation:
-            citations.append(([line]))
+            citations.append(line)
         else:
             article.append(line)
     #@highlight

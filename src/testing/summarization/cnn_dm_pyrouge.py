@@ -206,7 +206,6 @@ def load_tokenized_story(f_in): ## TODO // add citation sentences
     next_is_citation = False
     for line in f_in:
         line = line.rstrip()
-        line = line.lower()
         if line.startswith("@highlight1"):
             next_is_abstract = True
         elif line.startswith("@highlight2"):
@@ -436,7 +435,7 @@ def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir
     #os.system(cmd)
     for i in range(len(abstract_list)):
         np.savetxt(temp_file_prefix + 'sys.{0:07d}.txt'.format(i), selected_sent_all[i], newline = '\n', fmt="%s")
-        abstract_list_i_flat = [ x[k] for x in abstract_list[i] for k in range(len(x))]
+        abstract_list_i_flat = [x[k].lower() for x in abstract_list[i] for k in range(len(x))]
         np.savetxt(temp_file_prefix + 'model.A.{:07d}.txt'.format(i), abstract_list_i_flat, newline = '\n', fmt="%s")
         #for j in range(len(abstract_list[i])):
         #    np.savetxt(temp_file_prefix + '.{}.{:07d}.txt'.format(alphabet[j],i), abstract_list[i][j], newline = '\n', fmt="%s")
@@ -546,9 +545,9 @@ for top_k in range(1,args.top_k_max+1):
                 sent_rank = fname_d2_sent_rank[file_name][method]
             if method in not_inclusive_methods:
                 ## TODO:: article -> citation
-                selected_sent = [citations[s] for s in sent_rank[top_k_cit_len-1]]
+                selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len-1]]
             else:
-                selected_sent = [citations[s] for s in sent_rank[:top_k_cit_len]]
+                selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1

@@ -116,3 +116,6 @@ ENV/
 .mypy_cache/
 
 data/*
+
+#PyCharm stuff
+.idea/

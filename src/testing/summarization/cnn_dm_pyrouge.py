@@ -147,7 +147,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
                     w_idx, freq, freq_prob = word_d2_idx_freq[w]
                     freq_prob_list.append(freq_prob)
                 else:
-                    freq_prob_list.append(0) 
+                    freq_prob_list.append(0)
     if word_d2_idx_freq is None:
         freq_prob_tensor = None
     else:
@@ -178,7 +178,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
                 w_emb = encoded_layers_batch[inner_i, :sent_len, :]
                 w_emb_list.append(w_emb)
                 sent_emb_list.append(avg_emb)
-    
+
     return sent_emb_list, w_emb_list, sent_lens, freq_prob_tensor
 
 word_d2_idx_freq = None
@@ -197,24 +197,32 @@ all_clustering_models = [KMeans(n_clusters=i, max_iter=100, n_init=1, precompute
 print("Processing data")
 ########################
 
-def load_tokenized_story(f_in):
+def load_tokenized_story(f_in): ## TODO // add citation sentences
     article = []
     abstract = []
+    citations = []
 
-    next_is_highlight = False
+    next_is_abstract = False
+    next_is_citation = False
     for line in f_in:
         line = line.rstrip()
-        if line.startswith("@highlight"):
-            next_is_highlight = True
-        elif next_is_highlight:
+        if line.startswith("@highlight1"):
+            next_is_abstract = True
+        elif line.startswith("@highlight2"):
+            next_is_citation = True
+            next_is_abstract = False
+
+        if next_is_abstract:
             abstract.append([line])
+        elif next_is_citation:
+            citations.append(line)
         else:
             article.append(line)
     #@highlight
-    return article, abstract
+    return article, abstract, citations
 
 
-def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device): 
+def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device):
     sent_emb_list, w_emb_tensors_list, sent_lens_list, freq_prob_tensor = run_bert(article, device, bert_tokenizer, bert_model, word_d2_idx_freq)
     sent_embs_tensor = torch.cat(sent_emb_list, dim=0)
     all_words_tensor = torch.cat(w_emb_tensors_list, dim=0)
@@ -222,10 +230,10 @@ def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, 
     all_words_tensor = all_words_tensor / (0.000000000001 + all_words_tensor.norm(dim = 1, keepdim=True) )
 
     sent_lens = torch.tensor(sent_lens_list, dtype=torch.float32 , device = device)
-    
+
     num_word = all_words_tensor.size(0)
     w_freq_tensor = torch.ones(1,num_word,device = device)
-        
+
     #emb_size = sent_emb_list[0].size(1)
     #num_sent = len(article)
     #sent_embs_tensor = torch.zeros(num_sent, emb_size, device = device)
@@ -295,7 +303,7 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens = None):
 
         max_sim = max_sim + sent_sim_improvement[selected_sent,:]
         max_sent_idx_list.append(selected_sent.item())
-    
+
     return max_sent_idx_list
 
 def select_by_avg_dist_boost( sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor = None):
@@ -363,46 +371,49 @@ def select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, de
 
     return max_sent_idx_list
 
-def rank_sents(basis_coeff_list, article, word_norm_emb, word_d2_idx_freq, top_k_max, device):
+def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_freq, top_k_max, device):
     alpha = 0.0001
-    m_d2_sent_ranks = {} 
+    m_d2_sent_ranks = {}
     if args.method_set != 'bert':
         sent_embs_tensor, sent_embs_w_tensor, all_words_tensor, w_emb_tensors_list, sent_lens, freq_prob_tensor, w_freq_tensor = article_to_embs(article, word_norm_emb, word_d2_idx_freq, device)
+        cit_sent_embs_tensor, cit_sent_embs_w_tensor, cit_all_words_tensor, cit_w_emb_tensors_list, cit_sent_lens, cit_freq_prob_tensor, cit_w_freq_tensor = article_to_embs(citations, word_norm_emb, word_d2_idx_freq, device)
         freq_w_4_tensor = alpha / (alpha + freq_prob_tensor)
+        ## TODO: do it twice, one for article and one for citations
     if 'bert' in args.method_set:
         sent_embs_tensor_bert, all_words_tensor_bert, w_emb_tensors_list_bert, sent_lens_bert, freq_prob_tensor_bert, w_freq_tensor_bert = article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device)
-
+        cit_sent_embs_tensor_bert, cit_all_words_tensor_bert, cit_w_emb_tensors_list_bert, cit_sent_lens_bert, cit_freq_prob_tensor_bert, cit_w_freq_tensor_bert = article_to_embs_bert(citations, bert_tokenizer, bert_model, word_d2_idx_freq, device)
+        ## TODO: same as above
         #m_d2_sent_ranks['bert_sent_emb_dist_avg'] = select_by_avg_dist_boost( sent_embs_tensor_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device )
         #m_d2_sent_ranks['bert_norm_w_in_sent'] = select_by_topics( w_emb_tensors_list_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, sent_lens_bert)
         if freq_prob_tensor_bert is not None:
             freq_w_4_tensor_bert = alpha / (alpha + freq_prob_tensor_bert)
-            m_d2_sent_ranks['bert_sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost( sent_embs_tensor_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, freq_w_4_tensor_bert )
-            m_d2_sent_ranks['bert_norm_w_in_sent_freq_4'] = select_by_topics( w_emb_tensors_list_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, sent_lens_bert, freq_w_tensor = freq_w_4_tensor_bert)
+            m_d2_sent_ranks['bert_sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost( cit_sent_embs_tensor_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, freq_w_4_tensor_bert )
+            m_d2_sent_ranks['bert_norm_w_in_sent_freq_4'] = select_by_topics( cit_w_emb_tensors_list_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, sent_lens_bert, freq_w_tensor = freq_w_4_tensor_bert)
 
 
     if 'embs' in args.method_set:
-        m_d2_sent_ranks['sent_emb_dist_avg'] = select_by_avg_dist_boost( sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device )
-        m_d2_sent_ranks['sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost( sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_4_tensor )
-        m_d2_sent_ranks['sent_emb_freq_4_dist_avg_freq_4'] = select_by_avg_dist_boost( sent_embs_w_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_4_tensor )
-        m_d2_sent_ranks['norm_w_in_sent'] = select_by_topics( w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens)
-        m_d2_sent_ranks['norm_w_in_sent_freq_4'] = select_by_topics( w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens, freq_w_tensor = freq_w_4_tensor)
+        m_d2_sent_ranks['sent_emb_dist_avg'] = select_by_avg_dist_boost( cit_sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device )
+        m_d2_sent_ranks['sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost( cit_sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_4_tensor )
+        m_d2_sent_ranks['sent_emb_freq_4_dist_avg_freq_4'] = select_by_avg_dist_boost( cit_sent_embs_w_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_4_tensor )
+        m_d2_sent_ranks['norm_w_in_sent'] = select_by_topics( cit_w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, cit_sent_lens)
+        m_d2_sent_ranks['norm_w_in_sent_freq_4'] = select_by_topics( cit_w_emb_tensors_list, all_words_tensor, w_freq_tensor, top_k_max, device, cit_sent_lens, freq_w_tensor = freq_w_4_tensor)
     if 'cluster' in args.method_set:
         #m_d2_sent_ranks['sent_emb_cluster_sent'] = select_by_clustering_sents(sent_embs_tensor, top_k_max, device)
         #m_d2_sent_ranks['sent_emb_cluster_sent_len'] = select_by_clustering_sents(sent_embs_tensor, top_k_max, device, sent_lens)
-        
+
         #m_d2_sent_ranks['sent_emb_cluster_sent'] = select_by_clustering_words(sent_embs_tensor, sent_embs_tensor, top_k_max, device)
         #m_d2_sent_ranks['sent_emb_cluster_sent_len'] = select_by_clustering_words(sent_embs_tensor, sent_embs_tensor, top_k_max, device, sent_lens)
         m_d2_sent_ranks['sent_emb_cluster_word'] = select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, device, w_freq_tensor)
         m_d2_sent_ranks['sent_emb_cluster_word_freq_4'] = select_by_clustering_words(sent_embs_tensor, all_words_tensor, top_k_max, device, w_freq_tensor*freq_w_4_tensor)
         m_d2_sent_ranks['sent_emb_freq_4_cluster_sent'] = select_by_clustering_words(sent_embs_w_tensor, sent_embs_w_tensor, top_k_max, device)
-        m_d2_sent_ranks['sent_emb_freq_4_cluster_sent_len'] = select_by_clustering_words(sent_embs_w_tensor, sent_embs_w_tensor, top_k_max, device, sent_lens)
+        m_d2_sent_ranks['sent_emb_freq_4_cluster_sent_len'] = select_by_clustering_words(sent_embs_w_tensor, sent_embs_w_tensor, top_k_max, device, cit_sent_lens)
         #m_d2_sent_ranks['sent_emb_freq_4_cluster_word'] = select_by_clustering_words(sent_embs_w_tensor, all_words_tensor, top_k_max, device, w_freq_tensor)
         #m_d2_sent_ranks['sent_emb_freq_4_cluster_word_freq_4'] = select_by_clustering_words(sent_embs_w_tensor, all_words_tensor, top_k_max, device, w_freq_tensor*freq_w_4_tensor)
     if basis_coeff_list is not None:
-        assert len(basis_coeff_list) == len(article)
+        assert len(basis_coeff_list) == len(citations)
         m_d2_sent_ranks['ours'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device)
         m_d2_sent_ranks['ours_freq_4'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens = None, freq_w_tensor = freq_w_4_tensor)
-    
+
     return m_d2_sent_ranks
 
 def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir_for_pyrouge):
@@ -424,7 +435,7 @@ def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir
     #os.system(cmd)
     for i in range(len(abstract_list)):
         np.savetxt(temp_file_prefix + 'sys.{0:07d}.txt'.format(i), selected_sent_all[i], newline = '\n', fmt="%s")
-        abstract_list_i_flat = [ x[k] for x in abstract_list[i] for k in range(len(x))]
+        abstract_list_i_flat = [x[k].lower() for x in abstract_list[i] for k in range(len(x))]
         np.savetxt(temp_file_prefix + 'model.A.{:07d}.txt'.format(i), abstract_list_i_flat, newline = '\n', fmt="%s")
         #for j in range(len(abstract_list[i])):
         #    np.savetxt(temp_file_prefix + '.{}.{:07d}.txt'.format(alphabet[j],i), abstract_list[i][j], newline = '\n', fmt="%s")
@@ -435,13 +446,14 @@ def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir
     cmd = 'rm -r '+ temp_dir_for_pyrouge +'*'
     os.system(cmd)
     return output
-            
-    
+
+
 
 fname_d2_sent_rank = {}
 fname_list = []
 article_list = []
 abstract_list = []
+citation_list = []
 
 stories = os.listdir(args.input)
 for file_name in stories:
@@ -449,20 +461,26 @@ for file_name in stories:
     sys.stdout.flush()
     #base_name = os.path.basename(file_name)
     with open(args.input + '/' + file_name) as f_in:
-        
+
         fname_list.append(file_name)
-        article, abstract = load_tokenized_story(f_in)
+        article, abstract, citations = load_tokenized_story(f_in)
         article_list.append(article)
         abstract_list.append(abstract)
+        citation_list.append(citations)
         with torch.no_grad():
+            article_proc = article
             if 'ours' in args.method_set:
+                # TODO:: article to citations
                 dataloader_test = load_testing_article_summ(word_d2_idx_freq, article, args.max_sent_len, args.batch_size, device)
+                cit_dataloader_test = load_testing_article_summ(word_d2_idx_freq, citations, args.max_sent_len, args.batch_size, device)
                 #sent_d2_basis, article_proc = utils_testing.output_sent_basis_summ(dataloader_test, org_sent_list, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
                 basis_coeff_list, article_proc = utils_testing.output_sent_basis_summ(dataloader_test, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
+                cit_basis_coeff_list, citation_proc = utils_testing.output_sent_basis_summ(cit_dataloader_test, parallel_encoder, parallel_decoder, args.n_basis, idx2word_freq)
             else:
-                basis_coeff_list = None
-                article_proc = article
-            fname_d2_sent_rank[file_name] = rank_sents(basis_coeff_list, article_proc, word_norm_emb, word_d2_idx_freq, args.top_k_max, device)
+                cit_basis_coeff_list = None
+                # article_proc = article
+                citation_proc = citations
+            fname_d2_sent_rank[file_name] = rank_sents(cit_basis_coeff_list, article_proc, citation_proc, word_norm_emb, word_d2_idx_freq, args.top_k_max, device)
 
 
 with open(args.outf_vis, 'w') as f_out:
@@ -485,7 +503,7 @@ if 'cluster' in args.method_set:
     #all_method_list += ['sent_emb_cluster_sent','sent_emb_cluster_sent_len','sent_emb_cluster_word','sent_emb_cluster_word_freq_4']
     #all_method_list += ['sent_emb_freq_4_cluster_sent','sent_emb_freq_4_cluster_sent_len','sent_emb_freq_4_cluster_word','sent_emb_freq_4_cluster_word_freq_4']
 
-#all_method_list += ['first','rnd']
+all_method_list += ['first','rnd']
 #all_method_list = ['ours', 'ours_freq_4', 'sent_emb_dist_avg', 'sent_emb_dist_avg_freq_4', 'norm_w_in_sent', 'norm_w_in_sent_freq_4', 'sent_emb_cluster_sent','sent_emb_cluster_sent_len','sent_emb_cluster_word','sent_emb_cluster_word_freq_4', 'first']
 
 not_inclusive_methods = set(['sent_emb_freq_4_cluster_sent','sent_emb_freq_4_cluster_sent_len','sent_emb_freq_4_cluster_word','sent_emb_freq_4_cluster_word_freq_4', 'sent_emb_cluster_sent','sent_emb_cluster_sent_len','sent_emb_cluster_word','sent_emb_cluster_word_freq_4'])
@@ -512,21 +530,24 @@ for top_k in range(1,args.top_k_max+1):
         for i in range(len(fname_list)):
             file_name = fname_list[i]
             article = article_list[i]
+            citations = citation_list[i]
             #if len(article) <= top_k:
             #    continue
             top_k_art_len = min(len(article), top_k)
+            top_k_cit_len = min(len(citations), top_k)
             if method == 'first':
-                sent_rank = list(range(top_k_art_len))
+                sent_rank = list(range(top_k_cit_len))
             elif method == 'rnd':
-                sent_rank = np.random.choice(len(article), top_k_art_len).tolist()
+                sent_rank = np.random.choice(len(citations), top_k_cit_len).tolist()
             else:
                 if method not in fname_d2_sent_rank[file_name]:
                     continue
                 sent_rank = fname_d2_sent_rank[file_name][method]
             if method in not_inclusive_methods:
-                selected_sent = [article[s] for s in sent_rank[top_k_art_len-1]]
+                ## TODO:: article -> citation
+                selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len-1]]
             else:
-                selected_sent = [article[s] for s in sent_rank[:top_k_art_len]]
+                selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1

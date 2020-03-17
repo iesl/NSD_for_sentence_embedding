@@ -206,6 +206,7 @@ def load_tokenized_story(f_in): ## TODO // add citation sentences
     next_is_citation = False
     for line in f_in:
         line = line.rstrip()
+        line = line.lower()
         if line.startswith("@highlight1"):
             next_is_abstract = True
         elif line.startswith("@highlight2"):
@@ -503,7 +504,7 @@ if 'cluster' in args.method_set:
     #all_method_list += ['sent_emb_cluster_sent','sent_emb_cluster_sent_len','sent_emb_cluster_word','sent_emb_cluster_word_freq_4']
     #all_method_list += ['sent_emb_freq_4_cluster_sent','sent_emb_freq_4_cluster_sent_len','sent_emb_freq_4_cluster_word','sent_emb_freq_4_cluster_word_freq_4']
 
-#all_method_list += ['first','rnd']
+all_method_list += ['first','rnd']
 #all_method_list = ['ours', 'ours_freq_4', 'sent_emb_dist_avg', 'sent_emb_dist_avg_freq_4', 'norm_w_in_sent', 'norm_w_in_sent_freq_4', 'sent_emb_cluster_sent','sent_emb_cluster_sent_len','sent_emb_cluster_word','sent_emb_cluster_word_freq_4', 'first']
 
 not_inclusive_methods = set(['sent_emb_freq_4_cluster_sent','sent_emb_freq_4_cluster_sent_len','sent_emb_freq_4_cluster_word','sent_emb_freq_4_cluster_word_freq_4', 'sent_emb_cluster_sent','sent_emb_cluster_sent_len','sent_emb_cluster_word','sent_emb_cluster_word_freq_4'])

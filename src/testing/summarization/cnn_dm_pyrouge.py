@@ -417,7 +417,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
     return m_d2_sent_ranks
 
 def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir_for_pyrouge):
-    r = Rouge155(log_level=logging.ERROR)
+    r = Rouge155()
 
     #r.model_dir = temp_file_dir
     #r.system_dir = temp_file_dir

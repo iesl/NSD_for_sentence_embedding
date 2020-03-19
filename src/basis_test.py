@@ -15,13 +15,13 @@ parser = argparse.ArgumentParser(description='PyTorch Neural Set Decoder for Sen
 ###path
 parser.add_argument('--data', type=str, default='./data/processed/wackypedia/',
                     help='location of the data corpus')
-parser.add_argument('--tensor_folder', type=str, default='tensors',
+parser.add_argument('--tensor_folder', type=str, default='all',
                     help='location of the data corpus')
 parser.add_argument('--checkpoint', type=str, default='./models/',
                     help='model checkpoint to use')
 parser.add_argument('--emb_file', type=str, default='target_emb.pt',
                     help='path to the file of a word embedding file')
-parser.add_argument('--outf', type=str, default='gen_log/generated.txt',
+parser.add_argument('--outf', type=str, default='./saves/gen_log/eval.txt',
                     help='output file for generated text')
 
 ###system
@@ -69,19 +69,19 @@ print("Loading Models")
 ########################
 
 
-parallel_encoder, parallel_decoder, encoder, decoder, word_norm_emb = loading_all_models(args, idx2word_freq, device, max_sent_len)
+parallel_encoder, encoder, word_norm_emb = loading_all_models(args, idx2word_freq, device, max_sent_len)
 
 encoder.eval()
-decoder.eval()
+# decoder.eval()
 
 with open(args.outf, 'w') as outf:
     outf.write('Shuffled Validation Topics:\n\n')
-    utils_testing.visualize_topics_val(dataloader_val_shuffled, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
+    utils_testing.visualize_topics_val(dataloader_val_shuffled, parallel_encoder, word_norm_emb, idx2word_freq, outf, args.max_batch_num)
     outf.write('Validation Topics:\n\n')
-    utils_testing.visualize_topics_val(dataloader_val, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
+    utils_testing.visualize_topics_val(dataloader_val, parallel_encoder, word_norm_emb, idx2word_freq, outf, args.max_batch_num)
     if dataloader_train:
         outf.write('Training Topics:\n\n')
-        utils_testing.visualize_topics_val(dataloader_train, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
+        utils_testing.visualize_topics_val(dataloader_train, parallel_encoder, word_norm_emb, idx2word_freq, outf, args.max_batch_num)
 
 #test_batch_size = 1
 #test_data = batchify(corpus.test, test_batch_size, args)

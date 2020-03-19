@@ -333,9 +333,10 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
         feature, target = sample_batched
         optimizer_e.zero_grad()
         output_emb_last, _ = parallel_encoder(feature)
+        target = target.type(torch.cuda.FloatTensor)
         loss = criterion(output_emb_last, target)
 
-        loss *= args.small_batch_size / args.batch_size
+        loss *= float(args.small_batch_size / args.batch_size)
         total_loss += loss.item()
 
         loss.backward()
@@ -408,21 +409,21 @@ for epoch in range(1, args.epochs+1):
         if i != args.training_split_num - 1 and (i + 1) % saving_freq != 0:
             continue
 
-        val_loss_all, val_loss_set, val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div = evaluate(dataloader_val, external_emb, current_coeff_opt)
+        val_loss_all = evaluate(dataloader_val, external_emb, current_coeff_opt)
         logging('-' * 89)
-        logging('| end of epoch {:3d} split {:3d} | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f} | l_f {:5.4f} + {:5.4f} = {:5.4f} | l_coeff {:5.2f} | reg {:5.2f} | div {:5.2f} | '
+        logging('| end of epoch {:3d} split {:3d} | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f}'
                 .format(epoch, i, (time.time() - epoch_start_time), lr,
-                                           val_loss_all, val_loss_set, val_loss_set_neg, val_loss_set + val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div))
+                                           val_loss_all))
         
-        val_loss_important = val_loss_set + val_loss_set_neg
+        val_loss_important = val_loss_all
         
         logging('-' * 89)
         #dataloader_val_shuffled?
-        val_loss_all, val_loss_set, val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div = evaluate(dataloader_val_shuffled, external_emb, current_coeff_opt)
+        val_loss_all = evaluate(dataloader_val_shuffled, external_emb, current_coeff_opt)
         logging('-' * 89)
-        logging('| Shuffled | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f} | l_f {:5.4f} + {:5.4f} = {:5.4f} | l_coeff {:5.2f} | reg {:5.2f} | div {:5.2f} | '
+        logging('| Shuffled | time: {:5.2f}s | lr {:5.2f} | valid loss {:5.2f}'
                 .format((time.time() - epoch_start_time), lr,
-                                           val_loss_all, val_loss_set, val_loss_set_neg, val_loss_set + val_loss_set_neg, val_loss_ceoff_pred, val_loss_set_reg, val_loss_set_div))
+                                           val_loss_all))
         logging('-' * 89)
         
         if not best_val_loss or val_loss_important < best_val_loss:

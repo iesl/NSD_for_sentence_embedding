@@ -400,7 +400,7 @@ def loading_all_models(args, idx2word_freq, device, max_sent_len):
     #    decoder = model_code.RNNModel_decoder(args.de_model, args.nhid * 2, args.nhidlast2, output_emb_size, 1, args.n_basis, linear_mapping_dim = args.nhid, dropoutp= 0.5)
 
     encoder.load_state_dict(torch.load(os.path.join(args.checkpoint, 'encoder.pt'), map_location=device))
-    decoder.load_state_dict(torch.load(os.path.join(args.checkpoint, 'decoder.pt'), map_location=device))
+    # decoder.load_state_dict(torch.load(os.path.join(args.checkpoint, 'decoder.pt'), map_location=device))
 
     if len(args.emb_file) == 0:
         word_emb = encoder.encoder.weight.detach()
@@ -408,9 +408,9 @@ def loading_all_models(args, idx2word_freq, device, max_sent_len):
     word_norm_emb = word_emb / (0.000000000001 + word_emb.norm(dim = 1, keepdim=True) )
     word_norm_emb[0,:] = 0
 
-    parallel_encoder, parallel_decoder = output_parallel_models(args.cuda, args.single_gpu, encoder, decoder)
+    parallel_encoder = output_parallel_models(args.cuda, args.single_gpu, encoder)
 
-    return parallel_encoder, parallel_decoder, encoder, decoder, word_norm_emb
+    return parallel_encoder, encoder, word_norm_emb
 
 def seed_all_randomness(seed,use_cuda):
     random.seed(seed)
@@ -433,16 +433,28 @@ def create_exp_dir(path, scripts_to_save=None):
             dst_file = os.path.join(path, 'scripts', os.path.basename(script))
             shutil.copyfile(script, dst_file)
 
-def save_checkpoint(encoder, decoder, optimizer_e,  optimizer_d, external_emb, path):
+# def save_checkpoint(encoder, decoder, optimizer_e,  optimizer_d, external_emb, path):
+#     torch.save(encoder.state_dict(), os.path.join(path, 'encoder.pt'))
+#     try:
+#         torch.save(decoder.state_dict(), os.path.join(path, 'decoder.pt'))
+#     except:
+#         pass
+#     if external_emb.size(0) > 1:
+#         torch.save(external_emb, os.path.join(path, 'target_emb.pt'))
+#     torch.save(optimizer_e.state_dict(), os.path.join(path, 'optimizer_e.pt'))
+#     torch.save(optimizer_d.state_dict(), os.path.join(path, 'optimizer_d.pt'))
+
+def save_checkpoint(encoder, optimizer_e, external_emb, path):
     torch.save(encoder.state_dict(), os.path.join(path, 'encoder.pt'))
-    try:
-        torch.save(decoder.state_dict(), os.path.join(path, 'decoder.pt'))
-    except:
-        pass
+    # try:
+    #     torch.save(decoder.state_dict(), os.path.join(path, 'decoder.pt'))
+    # except:
+    #     pass
     if external_emb.size(0) > 1:
         torch.save(external_emb, os.path.join(path, 'target_emb.pt'))
     torch.save(optimizer_e.state_dict(), os.path.join(path, 'optimizer_e.pt'))
-    torch.save(optimizer_d.state_dict(), os.path.join(path, 'optimizer_d.pt'))
+    # torch.save(optimizer_d.state_dict(), os.path.join(path, 'optimizer_d.pt'))
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 'True', 't', 'y', '1'):

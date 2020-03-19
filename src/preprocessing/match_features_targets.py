@@ -179,12 +179,12 @@ def match(i):
         word_count.append(number)
 
     all_targets[output_i, -len(word_count):] = torch.tensor(word_count, dtype = store_type)
-    for row in all_targets:
-        num = int(torch.sum(row))
-        if num not in summarize:
-            summarize[num] = 1
-        else:
-            summarize[num] += 1
+    # for row in all_targets:
+    #     num = int(torch.sum(row))
+    #     if num not in summarize:
+    #         summarize[num] = 1
+    #     else:
+    #         summarize[num] += 1
 
 print('*******************Matching finished*******************')
 
@@ -240,7 +240,7 @@ with open(training_output_name, 'wb') as f_out:
     print("Training size: {}".format(len(store_ind)))
     store_tensors(f_out, all_features[store_ind, :], all_targets[store_ind, :])
 
-with open(summarize_output_name, 'w') as file:
-    json.dump(summarize, file)
+# with open(summarize_output_name, 'w') as file:
+#     json.dump(summarize, file)
 
 

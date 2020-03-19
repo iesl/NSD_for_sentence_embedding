@@ -18,7 +18,7 @@ echo "code is running"
 #~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20190512-141313 --outf ./gen_log/wiki2016_val_glove_trans_bsz200_n1 --n_basis 1 --de_en_connection False --trans_layers 1 --data ./data/processed/wiki2016_min100/
 #~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20190512-141251 --outf ./gen_log/wiki2016_val_glove_trans_bsz200_n3 --n_basis 3 --data ./data/processed/wiki2016_min100/
 #~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20190512-135816 --outf ./gen_log/wiki2016_val_glove_trans_bsz200_n10_att --n_basis 10 --data ./data/processed/wiki2016_min100/
-~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20200111-150559 --outf ./gen_log/wiki2016_multi_div_val_glove_trans_bsz200_n10 --n_basis 10 --data ./data/processed/wiki2016_min100/ --tensor_folder tensors_multi150_div
+#~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20200111-150559 --outf ./gen_log/wiki2016_multi_div_val_glove_trans_bsz200_n10 --n_basis 10 --data ./data/processed/wiki2016_min100/ --tensor_folder tensors_multi150_div
 #~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20191013-111217 --outf ./gen_log/wiki2016_val_glove_trans_bsz200_n10_update_2_1 --n_basis 10 --data ./data/processed/wiki2016_min100/
 #~/anaconda3/bin/python src/basis_test.py --checkpoint ./models/wiki2016-20190512-135411 --outf ./gen_log/wiki2016_val_glove_trans_bsz200_n20 --n_basis 20 --data ./data/processed/wiki2016_min100/
 
@@ -204,3 +204,7 @@ echo "code is running"
 #~/anaconda3/bin/python src/testing/sim/basis_test_from_sent.py --input ./dataset_testing/SCWS/scws_org_lemma --checkpoint ./models/Wacky-20190405-013228 --outf ./gen_log/SWCS_glove_lc_elayer1_bsz200_ep.json --nlayers 1 --max_sent_len 150
 #~/anaconda3/bin/python src/testing/sim/basis_test_from_sent.py --input ./dataset_testing/SCWS/scws_org_lemma --checkpoint ./models/Wacky-20190405-143756 --outf ./gen_log/SWCS_glove_lc_elayer1_bsz200_ep6_sgd_multi.json --nlayers 1 --max_sent_len 150 --linear_mapping_dim -1 --outf_vis gen_log/generated_SCWS_glove_multi_2.txt
 #~/anaconda3/bin/python src/testing/sim/basis_test_from_sent.py --input ./dataset_testing/SCWS/scws_org_lemma --checkpoint ./models/Wacky-20190405-014701 --outf ./gen_log/SWCS_word2vec_lc_elayer1_bsz200_posi_ep6_multi.json --nlayers 1 --max_sent_len 150 --linear_mapping_dim -1 --outf_vis gen_log/generated_SCWS_word2vec_multi.txt
+
+
+~/anaconda3/bin/python src/basis_test.py --checkpoint /iesl/canvas/hanqingli/NSD_for_sentence_embedding/saves/test3_3-20200310-210514 --outf ./saves/gen_log/3_3.txt --data /iesl/canvas/hanqingli/NSD_for_sentence_embedding/data/wiki2016_min100/3_3
+#~/anaconda3/bin/python src/basis_test.py --checkpoint /iesl/canvas/hanqingli/NSD_for_sentence_embedding/saves/test5_5-20200310-210624 --outf ./saves/gen_log/5_5.txt --data /iesl/canvas/hanqingli/NSD_for_sentence_embedding/data/wiki2016_min100/5_5

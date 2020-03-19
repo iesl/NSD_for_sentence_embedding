@@ -9,10 +9,10 @@ import json
 import torch.nn.functional as F
 from utils import str2bool
 sys.path.insert(0, sys.path[0]+'/testing/sim')
-import SIF_pc_removal as SIF
+# import SIF_pc_removal as SIF
 import math
-import Sinkhorn
-import ot
+# import Sinkhorn
+# import ot
 
 def add_model_arguments(parser):
     ###encoder
@@ -61,92 +61,92 @@ def add_model_arguments(parser):
     parser.add_argument('--dropout_prob_trans', type=float, default=0,
                     help='hidden_dropout_prob and attention_probs_dropout_prob in Transformer')
 
-def predict_batch_simple(feature, parallel_encoder, parallel_decoder):
+def predict_batch_simple(feature, parallel_encoder):
     #output_emb, hidden, output_emb_last = parallel_encoder(feature.t())
     #output_emb_last = parallel_encoder(feature)
     output_emb_last, output_emb = parallel_encoder(feature)
-    basis_pred, coeff_pred =  parallel_decoder(output_emb_last, output_emb, predict_coeff_sum = True)
+    # basis_pred, coeff_pred =  parallel_decoder(output_emb_last, output_emb, predict_coeff_sum = True)
     #basis_pred, coeff_pred = nsd_loss.predict_basis(parallel_decoder, n_basis, output_emb_last, predict_coeff_sum = True )
 
-    basis_norm_pred = basis_pred / (0.000000000001 + basis_pred.norm(dim = 2, keepdim=True) )
-    return coeff_pred, basis_norm_pred, output_emb_last, output_emb
+    # basis_norm_pred = basis_pred / (0.000000000001 + basis_pred.norm(dim = 2, keepdim=True) )
+    return output_emb_last, output_emb
     
 
-def predict_batch(feature, parallel_encoder, parallel_decoder, word_norm_emb, n_basis, top_k):
-    
-    coeff_pred, basis_norm_pred, output_emb_last, output_emb = predict_batch_simple(feature, parallel_encoder, parallel_decoder)
-    #output_emb_last, output_emb = parallel_encoder(feature)
+def predict_batch(feature, parallel_encoder, word_norm_emb, top_k):
+
+    # coeff_pred, basis_norm_pred, output_emb_last, output_emb = predict_batch_simple(feature, parallel_encoder)
+    output_emb_last, output_emb = parallel_encoder(feature)
     #basis_pred, coeff_pred =  parallel_decoder(output_emb_last, output_emb, predict_coeff_sum = True)
 
-    coeff_sum = coeff_pred.cpu().numpy()
+    # coeff_sum = coeff_pred.cpu().numpy()
     
-    coeff_sum_diff = coeff_pred[:,:,0] - coeff_pred[:,:,1]
-    coeff_sum_diff_pos = coeff_sum_diff.clamp(min = 0)
-    coeff_sum_diff_cpu = coeff_sum_diff.cpu().numpy()
-    coeff_order = np.argsort(coeff_sum_diff_cpu, axis = 1)
-    coeff_order = np.flip( coeff_order, axis = 1 )
+    # coeff_sum_diff = coeff_pred[:,:,0] - coeff_pred[:,:,1]
+    # coeff_sum_diff_pos = coeff_sum_diff.clamp(min = 0)
+    # coeff_sum_diff_cpu = coeff_sum_diff.cpu().numpy()
+    # coeff_order = np.argsort(coeff_sum_diff_cpu, axis = 1)
+    # coeff_order = np.flip( coeff_order, axis = 1 )
 
     #basis_pred = basis_pred.permute(0,2,1)
     #basis_norm_pred = basis_pred / (0.000000000001 + basis_pred.norm(dim = 1, keepdim=True) )
-    basis_norm_pred = basis_norm_pred.permute(0,2,1)
+    # basis_norm_pred = basis_norm_pred.permute(0,2,1)
     #basis_norm_pred should have dimension (n_batch, emb_size, n_basis)
     #word_norm_emb should have dimension (ntokens, emb_size)
-    sim_pairwise = torch.matmul(word_norm_emb.unsqueeze(dim = 0), basis_norm_pred)
+    # sim_pairwise = torch.matmul(word_norm_emb.unsqueeze(dim = 0), basis_norm_pred)
     #print(sim_pairwise.size())
     #sim_pairwise should have dimension (n_batch, ntokens, emb_size)
-    top_value, top_index = torch.topk(sim_pairwise, top_k, dim = 1, sorted=True)
-    
-    word_emb_input = word_norm_emb[feature,:]
-    #print(word_emb_input.size())
-    #print(basis_norm_pred.size())
-    word_basis_sim = torch.bmm( word_emb_input, basis_norm_pred )
-    word_basis_sim_pos = word_basis_sim.clamp(min = 0)
-    #word_basis_sim_pos = word_basis_sim_pos * word_basis_sim_pos 
+    top_value, top_index = torch.topk(output_emb_last, top_k, dim = 1, sorted=True)
+    #
+    # word_emb_input = word_norm_emb[feature,:]
+    # #print(word_emb_input.size())
+    # #print(basis_norm_pred.size())
+    # word_basis_sim = torch.bmm( word_emb_input, basis_norm_pred )
+    # word_basis_sim_pos = word_basis_sim.clamp(min = 0)
+    # #word_basis_sim_pos = word_basis_sim_pos * word_basis_sim_pos
+    #
+    # bsz, max_sent_len, emb_size = output_emb.size()
+    # #bsz, max_sent_len = feature.size()
+    # #emb_size = basis_norm_pred.size(1)
+    # avg_out_emb = torch.empty(bsz, emb_size)
+    # word_imp_sim = []
+    # # word_imp_sim_coeff = []
+    # # word_imp_coeff = []
+    # for i in range(bsz):
+    #     #print(feature[i,:])
+    #     sent_len = (feature[i,:] != 0).sum()
+    #     avg_out_emb[i,:] = output_emb[i,-sent_len:,:].mean(dim = 0)
+    #     topic_weights = word_basis_sim_pos[i, -sent_len:, :]
+    #     #print(topic_weights.size())
+    #     #print(topic_weights)
+    #     topic_weights_sum = topic_weights.sum(dim = 1)
+    #     #print(topic_weights_sum)
+    #     #print(topic_weights_sum.size())
+    #     weights_nonzeros = topic_weights_sum.nonzero()
+    #     weights_nonzeros_size = weights_nonzeros.size()
+    #     if len(weights_nonzeros_size) == 2 and weights_nonzeros_size[1] == 1:
+    #         weights_nonzeros = weights_nonzeros.squeeze(dim = 1)
+    #     #print(weights_nonzeros)
+    #     #print(weights_nonzeros.size())
+    #     topic_weights_norm = topic_weights.clone()
+    #     #print(weights_nonzeros)
+    #     if weights_nonzeros.nelement() > 0:
+    #         topic_weights_norm[weights_nonzeros,:] = topic_weights[weights_nonzeros,:] / topic_weights_sum[weights_nonzeros].unsqueeze(dim = 1)
+    #     #if (topic_weights_sum == 0).sum() == 0:
+    #     #    topic_weights_norm = topic_weights / topic_weights_sum
+    #     #else:
+    #     #    print("for some word, either word embedding is zero or all topic embeddings are zero")
+    #     #    print(topic_weights_sum)
+    #     #    topic_weights_norm = topic_weights
+    #     word_importnace_sim = topic_weights.sum(dim = 1).tolist()
+    #     word_importnace_sim_coeff = (topic_weights*coeff_sum_diff_pos[i,:].unsqueeze(dim = 0) ).sum(dim = 1).tolist()
+    #     word_importnace_coeff = (topic_weights_norm*coeff_sum_diff_pos[i,:]).sum(dim = 1).tolist()
+    #     #print(topic_weights)
+    #     #print(coeff_sum_diff_pos)
+    #     #sys.exit(1)
+    #     word_imp_sim.append(word_importnace_sim)
+    #     # word_imp_sim_coeff.append(word_importnace_sim_coeff)
+    #     # word_imp_coeff.append(word_importnace_coeff)
 
-    bsz, max_sent_len, emb_size = output_emb.size()
-    #bsz, max_sent_len = feature.size()
-    #emb_size = basis_norm_pred.size(1)
-    avg_out_emb = torch.empty(bsz, emb_size)
-    word_imp_sim = []
-    word_imp_sim_coeff = []
-    word_imp_coeff = []
-    for i in range(bsz):
-        #print(feature[i,:])
-        sent_len = (feature[i,:] != 0).sum()
-        avg_out_emb[i,:] = output_emb[i,-sent_len:,:].mean(dim = 0)
-        topic_weights = word_basis_sim_pos[i, -sent_len:, :]
-        #print(topic_weights.size())
-        #print(topic_weights)
-        topic_weights_sum = topic_weights.sum(dim = 1)
-        #print(topic_weights_sum)
-        #print(topic_weights_sum.size())
-        weights_nonzeros = topic_weights_sum.nonzero()
-        weights_nonzeros_size = weights_nonzeros.size()
-        if len(weights_nonzeros_size) == 2 and weights_nonzeros_size[1] == 1:
-            weights_nonzeros = weights_nonzeros.squeeze(dim = 1)
-        #print(weights_nonzeros)
-        #print(weights_nonzeros.size())
-        topic_weights_norm = topic_weights.clone()
-        #print(weights_nonzeros)
-        if weights_nonzeros.nelement() > 0:
-            topic_weights_norm[weights_nonzeros,:] = topic_weights[weights_nonzeros,:] / topic_weights_sum[weights_nonzeros].unsqueeze(dim = 1)
-        #if (topic_weights_sum == 0).sum() == 0:
-        #    topic_weights_norm = topic_weights / topic_weights_sum
-        #else:
-        #    print("for some word, either word embedding is zero or all topic embeddings are zero")
-        #    print(topic_weights_sum)
-        #    topic_weights_norm = topic_weights
-        word_importnace_sim = topic_weights.sum(dim = 1).tolist()
-        word_importnace_sim_coeff = (topic_weights*coeff_sum_diff_pos[i,:].unsqueeze(dim = 0) ).sum(dim = 1).tolist()
-        word_importnace_coeff = (topic_weights_norm*coeff_sum_diff_pos[i,:]).sum(dim = 1).tolist()
-        #print(topic_weights)
-        #print(coeff_sum_diff_pos)
-        #sys.exit(1)
-        word_imp_sim.append(word_importnace_sim)
-        word_imp_sim_coeff.append(word_importnace_sim_coeff)
-        word_imp_coeff.append(word_importnace_coeff)
-
-    return basis_norm_pred, coeff_order, coeff_sum, top_value, top_index, output_emb_last, avg_out_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff
+    return top_value, top_index, output_emb_last
 
 def convert_feature_to_text(feature, idx2word_freq):
     feature_list = feature.tolist()
@@ -160,27 +160,31 @@ def convert_feature_to_text(feature, idx2word_freq):
         feature_text.append(current_sent)
     return feature_text
 
-def print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf, word_imp_sim = None):
-    n_basis = coeff_order.shape[1]
+def print_basis_text(feature, idx2word_freq, top_value, top_index, i_batch, outf, word_imp_sim = None):
+    # n_basis = coeff_order.shape[1]
     top_k = top_index.size(1)
     feature_text = convert_feature_to_text(feature, idx2word_freq)
     for i_sent in range(len(feature_text)):
         #outf.write('{} batch, {}th sent: '.format(i_batch, i_sent)+' '.join(feature_text[i_sent])+'\n')
         if word_imp_sim is not None:
+            # print('feature:{}'.format(feature_text[i_sent]))
+            # print('word_imp:{}'.format([y for y in word_imp_sim[i_sent]]))
             #outf.write(' '.join('{0:.2f}'.format(x/4.0) for x in word_imp_sim[i_sent]])+'\n')
-            outf.write(' '.join(['\\colorbox{{c{0:02}}}{{{1}}}'.format(int(100-y*100/4.0),x ) for x, y in zip( feature_text[i_sent], word_imp_sim[i_sent] )])+'\n')
+            outf.write(' '.join(['\\colorbox{{c{0:02}}}{{{1}}}'.format(max(0, int(100-max(0, y)*100/3.0)),x ) for x, y in zip( feature_text[i_sent], word_imp_sim[i_sent] )])+'\n')
         else:
             outf.write(' '.join(feature_text[i_sent])+'\n')
 
-        for j in range(n_basis):
-            org_ind = coeff_order[i_sent, j]
+
+        # print('top_value:{}'.format(top_value))
+        # for j in range(n_basis):
+            # org_ind = coeff_order[i_sent, j]
             #outf.write(str(j)+', org '+str(org_ind)+', '+str( coeff_sum[i_sent,org_ind,0] )+' - '+str( coeff_sum[i_sent,org_ind,1] )+': ')
 
-            for k in range(top_k):
-                word_nn = idx2word_freq[top_index[i_sent,k,org_ind].item()][0]
-                outf.write( word_nn+' {:5.3f}'.format(top_value[i_sent,k,org_ind].item())+' ' )
-            outf.write('\n')
+        for k in range(top_k):
+            word_nn = feature_text[i_sent, top_index[i_sent,k].item()][0]
+            outf.write( word_nn+' {:5.3f}'.format(top_value[i_sent,k].item())+' ' )
         outf.write('\n')
+        # outf.write('\n')
 
 def dump_prediction_to_json(feature, basis_norm_pred, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, basis_json, org_sent_list, encoded_emb, avg_encoded_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff):
     n_basis = coeff_order.shape[1]
@@ -294,16 +298,16 @@ def output_sent_basis(dataloader, org_sent_list, parallel_encoder, parallel_deco
             dump_prediction_to_json(feature, basis_norm_pred, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, basis_json, org_sent_list, encoded_emb, avg_encoded_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff)
     return basis_json
 
-def visualize_topics_val(dataloader, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, n_basis, max_batch_num):
+def visualize_topics_val(dataloader, parallel_encoder, word_norm_emb, idx2word_freq, outf, max_batch_num):
     #topics_num = 0
-    top_k = 5
+    top_k = 10
     with torch.no_grad():
         for i_batch, sample_batched in enumerate(dataloader):
             feature, target = sample_batched
 
-            basis_norm_pred, coeff_order, coeff_sum, top_value, top_index, encoded_emb, avg_encoded_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff = predict_batch(feature, parallel_encoder, parallel_decoder, word_norm_emb, n_basis, top_k)
+            top_value, top_index, encoded_emb = predict_batch(feature, parallel_encoder, word_norm_emb, top_k)
             #print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf, word_imp_sim)
-            print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf)
+            print_basis_text(feature, idx2word_freq, top_value, top_index, i_batch, outf, encoded_emb)
 
             if i_batch >= max_batch_num:
                 break
@@ -675,7 +679,8 @@ def predict_entail_scores(testing_pair_loader, L1_losss_B, device, word2emb, wor
                 w_embs_source_norm = w_embs_source / (0.000000000001 + np.linalg.norm(w_embs_source, axis = 1, keepdims=True))
                 w_embs_target_norm = w_embs_target / (0.000000000001 + np.linalg.norm(w_embs_target, axis = 1, keepdims=True))
                 M = 1 - np.matmul( w_embs_source_norm,  np.transpose(w_embs_target_norm) )
-                Wd = ot.emd2(w_uni_prob_source, w_uni_prob_target, M)
+                Wd = ot.emd2(
+                    w_uni_prob_source, w_uni_prob_target, M)
                 #Wd_reg = ot.sinkhorn2(w_uni_source, w_uni_target, M, 1)
                 Wd_w = ot.emd2(w_weights_source, w_weights_target, M)
             else:

@@ -208,9 +208,11 @@ def load_tokenized_story(f_in): ## TODO // add citation sentences
         line = line.rstrip()
         if line.startswith("@highlight1"):
             next_is_abstract = True
+            continue
         elif line.startswith("@highlight2"):
             next_is_citation = True
             next_is_abstract = False
+            continue
 
         if next_is_abstract:
             abstract.append([line])

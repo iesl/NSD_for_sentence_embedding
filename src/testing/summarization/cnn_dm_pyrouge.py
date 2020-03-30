@@ -11,6 +11,7 @@ sys.path.insert(0, sys.path[0] + '/../..')
 from collections import Counter
 # from sklearn.cluster import KMeans
 from sklearn.cluster import KMeans, MiniBatchKMeans
+from ml_metrics import apk
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -589,6 +590,7 @@ for top_k in range(1, args.top_k_max + 1):
         selected_sent_all = []
         summ_len_sum = 0
         effective_doc_count = 0
+        map_score = 0.0
         for i in range(len(fname_list)):
             file_name = fname_list[i]
             article = article_list[i]
@@ -613,6 +615,8 @@ for top_k in range(1, args.top_k_max + 1):
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1
+            true_cits = np.arange(len(citations)//2)
+            map_score += apk(true_cits, selected_sent, top_k_cit_len)
             selected_sent_all.append(selected_sent)
         # selected_sent_all
         if len(selected_sent_all) != len(abstract_list):
@@ -620,7 +624,9 @@ for top_k in range(1, args.top_k_max + 1):
             logger.logging(str(len(abstract_list)))
             logger.logging("do not run " + method)
             continue
-        score = eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, tempfile.tempdir)
+        map_score /= effective_doc_count
+        # score = eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, tempfile.tempdir)
+
         # rouge = Pythonrouge(summary_file_exist=False, summary=selected_sent_all, reference=abstract_list, n_gram=2, ROUGE_SU4=True, ROUGE_L=False,
         #            #recall_only=True, stemming=True, stopwords=True,
         #            #recall_only=False, stemming=True, stopwords=True,
@@ -630,18 +636,19 @@ for top_k in range(1, args.top_k_max + 1):
         #            resampling=True, samples=1000, favor=True, p=0.5)
         # score = rouge.calc_score()
         avg_summ_len = summ_len_sum / float(effective_doc_count)
-        logger.logging(str(score))
+        # logger.logging(str(score))
+        logger.logging("MAP Score: " + str(map_score))
         logger.logging("summarization length " + str(avg_summ_len))
-        m_d2_output_list[method].append(
-            [method, str(top_k), str(avg_summ_len), str(score[pretty_header[3]]), str(score[pretty_header[4]]),
-             str(score[pretty_header[5]]), str(score[pretty_header[6]])])
+        # m_d2_output_list[method].append(
+        #     [method, str(top_k), str(avg_summ_len), str(score[pretty_header[3]]), str(score[pretty_header[4]]),
+        #      str(score[pretty_header[5]]), str(score[pretty_header[6]])])
 
 cmd = 'rm -r ' + tempfile.tempdir
 os.system(cmd)
 cmd = 'rm -r ' + temp_file_prefix
 os.system(cmd)
 
-logger.logging(','.join(pretty_header))
-for method in m_d2_output_list:
-    for fields in m_d2_output_list[method]:
-        logger.logging(','.join(fields))
+# logger.logging(','.join(pretty_header))
+# for method in m_d2_output_list:
+#     for fields in m_d2_output_list[method]:
+#         logger.logging(','.join(fields))

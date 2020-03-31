@@ -609,18 +609,18 @@ for top_k in range(1, args.top_k_max + 1):
                 sent_rank = fname_d2_sent_rank[file_name][method]
             if method in not_inclusive_methods:
                 ## TODO:: article -> citation
-                # selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len - 1]]
-                selected_sent = sent_rank[top_k_cit_len - 1]
+                selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len - 1]]
+                selected_sent_ind = sent_rank[top_k_cit_len - 1]
             else:
-                # selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
-                selected_sent = sent_rank[:top_k_cit_len]
+                selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
+                selected_sent_ind = sent_rank[:top_k_cit_len]
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1
             true_cits = np.arange(len(citations)//2).tolist()
             print(true_cits)
             print(selected_sent)
-            map_score += apk(true_cits, selected_sent, top_k_cit_len)
+            map_score += apk(true_cits, selected_sent_ind, top_k_cit_len)
             selected_sent_all.append(selected_sent)
         # selected_sent_all
         if len(selected_sent_all) != len(abstract_list):

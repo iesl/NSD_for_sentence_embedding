@@ -609,9 +609,11 @@ for top_k in range(1, args.top_k_max + 1):
                 sent_rank = fname_d2_sent_rank[file_name][method]
             if method in not_inclusive_methods:
                 ## TODO:: article -> citation
-                selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len - 1]]
+                # selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len - 1]]
+                selected_sent = sent_rank[top_k_cit_len - 1]
             else:
-                selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
+                # selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
+                selected_sent = sent_rank[:top_k_cit_len]
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1

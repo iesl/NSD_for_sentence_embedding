@@ -330,11 +330,12 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
 # just rank the sentences without adding diversity
 def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
     sent_words_sim[sent_words_sim < 0] = 0
-    matching_dist = (-sent_words_sim.sum(dim=1)).tolist()
+    matching_dist = (-sent_words_sim.sum(dim=1))
     if sent_lens is not None:
         matching_dist = matching_dist / sent_lens
-
-    return np.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
+    sent_rank_idx_list = np.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
+    sent_rank_idx_list = sent_rank_idx_list.tolist()
+    return sent_rank_idx_list
 
 
 def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor=None):

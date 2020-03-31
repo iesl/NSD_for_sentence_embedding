@@ -306,6 +306,7 @@ def article_to_embs(article, word_norm_emb, word_d2_idx_freq, device):
         1, -1), w_freq_tensor.view(1, -1)
 
 
+'''
 def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
     num_words = sent_words_sim.size(1)
     # max_sim = -10000 * torch.ones( (1,num_words), device = device )
@@ -323,6 +324,17 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
         max_sent_idx_list.append(selected_sent.item())
 
     return max_sent_idx_list
+'''
+
+
+# just rank the sentences without adding diversity
+def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
+    sent_words_sim[sent_words_sim < 0] = 0
+    matching_dist = (-sent_words_sim.sum(dim=1)).tolist()
+    if sent_lens is not None:
+        matching_dist = matching_dist / sent_lens
+
+    return np.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
 
 
 def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor=None):
@@ -618,7 +630,7 @@ for top_k in range(1, args.top_k_max + 1):
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1
-            true_cits = np.arange(len(citations)//2).tolist()
+            true_cits = np.arange(len(citations) // 2).tolist()
             # print(true_cits)
             # print(selected_sent_ind)
             map_score += apk(true_cits, selected_sent_ind, top_k_cit_len)

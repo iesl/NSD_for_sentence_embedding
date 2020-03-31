@@ -619,7 +619,7 @@ for top_k in range(1, args.top_k_max + 1):
             effective_doc_count += 1
             true_cits = np.arange(len(citations)//2).tolist()
             print(true_cits)
-            print(selected_sent)
+            print(selected_sent_ind)
             map_score += apk(true_cits, selected_sent_ind, top_k_cit_len)
             selected_sent_all.append(selected_sent)
         # selected_sent_all

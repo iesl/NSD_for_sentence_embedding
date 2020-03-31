@@ -333,7 +333,7 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
     matching_dist = (-sent_words_sim.sum(dim=1))
     if sent_lens is not None:
         matching_dist = matching_dist / sent_lens
-    sent_rank_idx_list = np.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
+    sent_rank_idx_list = torch.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
     sent_rank_idx_list = sent_rank_idx_list.tolist()
     return sent_rank_idx_list
 

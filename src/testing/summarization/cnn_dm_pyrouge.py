@@ -571,8 +571,9 @@ not_inclusive_methods = set(
      'sent_emb_cluster_word', 'sent_emb_cluster_word_freq_4'])
 
 # pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'ROUGE-1-F', 'ROUGE-2-F', 'ROUGE-SU4-F']
-pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'rouge_1_f_score', 'rouge_2_f_score', 'rouge_su*_f_score',
-                 'rouge_l_f_score']
+# pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'rouge_1_f_score', 'rouge_2_f_score', 'rouge_su*_f_score',
+#                  'rouge_l_f_score']
+pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'map score']
 
 unique_dir_name = str(uuid.uuid4())
 temp_file_prefix = temp_file_dir + unique_dir_name + '/'
@@ -646,13 +647,15 @@ for top_k in range(1, args.top_k_max + 1):
         # m_d2_output_list[method].append(
         #     [method, str(top_k), str(avg_summ_len), str(score[pretty_header[3]]), str(score[pretty_header[4]]),
         #      str(score[pretty_header[5]]), str(score[pretty_header[6]])])
+        m_d2_output_list[method].append(
+            [method, str(top_k), str(avg_summ_len), str(map_score)])
 
 cmd = 'rm -r ' + tempfile.tempdir
 os.system(cmd)
 cmd = 'rm -r ' + temp_file_prefix
 os.system(cmd)
 
-# logger.logging(','.join(pretty_header))
-# for method in m_d2_output_list:
-#     for fields in m_d2_output_list[method]:
-#         logger.logging(','.join(fields))
+logger.logging(','.join(pretty_header))
+for method in m_d2_output_list:
+    for fields in m_d2_output_list[method]:
+        logger.logging(','.join(fields))

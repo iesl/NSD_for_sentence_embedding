@@ -242,7 +242,7 @@ def load_tokenized_story(f_in):  ## TODO // add citation sentences
 def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device):
     sent_emb_list, w_emb_tensors_list, sent_lens_list, freq_prob_tensor = run_bert(article, device, bert_tokenizer,
                                                                                    bert_model, word_d2_idx_freq)
-    print("w_embs_list:", sent_emb_list[0].shape)
+    print("w_embs_list:", w_emb_tensors_list[0].shape)
     print(len(w_emb_tensors_list))
     sent_embs_tensor = torch.cat(sent_emb_list, dim=0)
     all_words_tensor = torch.cat(w_emb_tensors_list, dim=0)

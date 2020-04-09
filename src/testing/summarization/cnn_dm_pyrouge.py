@@ -158,6 +158,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
                     freq_prob_list.append(freq_prob)
                 else:
                     freq_prob_list.append(0)
+    print(len(freq_prob_list))
     if word_d2_idx_freq is None:
         freq_prob_tensor = None
     else:

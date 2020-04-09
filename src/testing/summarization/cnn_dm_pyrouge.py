@@ -148,7 +148,6 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
     sent_lens = []
     for sent in input_sents:
         tokenized_text = bert_tokenizer.tokenize('[CLS] ' + sent + ' [SEP]')
-        print(tokenized_text)
         indexed_tokens = bert_tokenizer.convert_tokens_to_ids(tokenized_text)
         idx_list.append(indexed_tokens)
         sent_lens.append(min(len(indexed_tokens), bert_max_len))
@@ -441,6 +440,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
             print('freq_prob_tensor_bert:', freq_prob_tensor_bert.shape)
             freq_w_4_tensor_bert = alpha / (alpha + freq_prob_tensor_bert)
             print('freq_w_4_tensor_bert:', freq_w_4_tensor_bert.shape)
+            print("cit_all_words:", cit_all_words_tensor_bert.shape)
             m_d2_sent_ranks['bert_sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost(cit_sent_embs_tensor_bert,
                                                                                         all_words_tensor_bert,
                                                                                         w_freq_tensor_bert, top_k_max,

@@ -16,10 +16,11 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-bert_dir = '/mnt/nfs/scratch1/hschang/language_modeling/pytorch-pretrained-BERT'
-sys.path.insert(1, bert_dir)
-from pytorch_pretrained_bert import BertTokenizer, BertModel
+# bert_dir = '/mnt/nfs/scratch1/hschang/language_modeling/pytorch-pretrained-BERT'
+# sys.path.insert(1, bert_dir)
+# from pytorch_pretrained_bert import BertTokenizer, BertModel
 
+from transformers import *
 # import torch.nn as nn
 # import torch.utils.data
 # import coherency_eval
@@ -126,13 +127,15 @@ elif args.method_set != 'bert':
 
 if 'bert' in args.method_set:
     # BERT_model_path = 'bert-base-cased'
-    BERT_model_path = 'bert-large-cased'
+    model_name = 'allenai/scibert_scivocab_cased'
+    # bert_tokenizer = BertTokenizer.from_pretrained(model_name)
     lower_case = False
-    bert_tokenizer = BertTokenizer.from_pretrained(BERT_model_path, cache_dir=bert_dir + '/cache_dir/',
-                                                   do_lower_case=lower_case)
+    bert_tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=lower_case)
+    bert_model = AutoModel.from_pretrained(model_name)
+    # bert_tokenizer = BertTokenizer.from_pretrained(BERT_model_path, cache_dir = bert_dir + '/cache_dir/', do_lower_case = lower_case)
     bert_max_len = 2 + 500
     bert_batch_size = 100
-    bert_model = BertModel.from_pretrained(BERT_model_path)
+    # bert_model = BertModel.from_pretrained(BERT_model_path)
     bert_model.eval()
     bert_model.to(device)
 
@@ -178,8 +181,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
 
         if storing_idx == bert_batch_size - 1 or i == len(idx_list) - 1:
             with torch.no_grad():
-                encoded_layers_batch, cls_emb_batch = bert_model(tokens_tensor, attention_mask=mask_tensor,
-                                                                 output_all_encoded_layers=False)
+                encoded_layers_batch, cls_emb_batch = bert_model(tokens_tensor, attention_mask=mask_tensor)
             for inner_i in range(len(length_list)):
                 sent_len = length_list[inner_i]
                 avg_emb = torch.mean(encoded_layers_batch[inner_i, :sent_len, :], dim=0, keepdim=True)
@@ -433,7 +435,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
                                                                                         device, freq_w_4_tensor_bert)
             m_d2_sent_ranks['bert_norm_w_in_sent_freq_4'] = select_by_topics(cit_w_emb_tensors_list_bert,
                                                                              all_words_tensor_bert, w_freq_tensor_bert,
-                                                                             top_k_max, device, sent_lens_bert,
+                                                                             top_k_max, device, cit_sent_lens_bert,
                                                                              freq_w_tensor=freq_w_4_tensor_bert)
 
     if 'embs' in args.method_set:

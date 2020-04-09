@@ -434,7 +434,9 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         # m_d2_sent_ranks['bert_sent_emb_dist_avg'] = select_by_avg_dist_boost( sent_embs_tensor_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device )
         # m_d2_sent_ranks['bert_norm_w_in_sent'] = select_by_topics( w_emb_tensors_list_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, sent_lens_bert)
         if freq_prob_tensor_bert is not None:
+            print('freq_prob_tensor_bert:', freq_prob_tensor_bert.shape)
             freq_w_4_tensor_bert = alpha / (alpha + freq_prob_tensor_bert)
+            print('freq_w_4_tensor_bert:', freq_w_4_tensor_bert.shape)
             m_d2_sent_ranks['bert_sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost(cit_sent_embs_tensor_bert,
                                                                                         all_words_tensor_bert,
                                                                                         w_freq_tensor_bert, top_k_max,

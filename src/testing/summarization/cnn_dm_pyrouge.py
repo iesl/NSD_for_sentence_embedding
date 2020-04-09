@@ -148,6 +148,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
     sent_lens = []
     for sent in input_sents:
         tokenized_text = bert_tokenizer.tokenize('[CLS] ' + sent + ' [SEP]')
+        print(tokenized_text)
         indexed_tokens = bert_tokenizer.convert_tokens_to_ids(tokenized_text)
         idx_list.append(indexed_tokens)
         sent_lens.append(min(len(indexed_tokens), bert_max_len))

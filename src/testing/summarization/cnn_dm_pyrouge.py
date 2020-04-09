@@ -349,6 +349,7 @@ def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, 
     print("freq_w_tensor:", freq_w_tensor.shape)
     sent_words_sim *= w_freq_tensor
     if freq_w_tensor is not None:
+        print("sent_words_sim:", sent_words_sim.shape)
         sent_words_sim *= freq_w_tensor
     max_sent_idx_list = greedy_selection(sent_words_sim, top_k_max)
     return max_sent_idx_list
@@ -524,7 +525,8 @@ article_list = []
 abstract_list = []
 citation_list = []
 
-stories = os.listdir(args.input)
+# stories = os.listdir(args.input)
+stories = ['22198570_cit_title_abs_w_rand.txt', '24334610_cit_title_abs_w_rand.txt']
 for file_name in stories:
     print("Processing " + file_name)
     sys.stdout.flush()

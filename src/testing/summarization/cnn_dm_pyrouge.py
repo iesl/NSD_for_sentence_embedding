@@ -342,6 +342,11 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
 
 def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor=None):
     sent_words_sim = torch.mm(sent_embs_tensor, all_words_tensor.t())
+    print("sent_words_sim:", sent_words_sim.shape)
+    print("sent_embs_tensor:", sent_embs_tensor.shape)
+    print("all_words_tensor:", all_words_tensor.shape)
+    print("w_freq_tensor:", w_freq_tensor.shape)
+    print("freq_w_tensor:", freq_w_tensor.shape)
     sent_words_sim *= w_freq_tensor
     if freq_w_tensor is not None:
         sent_words_sim *= freq_w_tensor

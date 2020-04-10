@@ -519,8 +519,7 @@ article_list = []
 abstract_list = []
 citation_list = []
 
-# stories = os.listdir(args.input)
-stories = ['24334610_cit_title_abs_w_rand.txt']
+stories = os.listdir(args.input)
 for file_name in stories:
     print("Processing " + file_name)
     sys.stdout.flush()

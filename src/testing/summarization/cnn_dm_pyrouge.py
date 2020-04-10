@@ -158,7 +158,6 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
                     freq_prob_list.append(freq_prob)
                 else:
                     freq_prob_list.append(0)
-    print("freq_prob_list:", len(freq_prob_list))
     if word_d2_idx_freq is None:
         freq_prob_tensor = None
     else:
@@ -242,8 +241,6 @@ def load_tokenized_story(f_in):  ## TODO // add citation sentences
 def article_to_embs_bert(article, bert_tokenizer, bert_model, word_d2_idx_freq, device):
     sent_emb_list, w_emb_tensors_list, sent_lens_list, freq_prob_tensor = run_bert(article, device, bert_tokenizer,
                                                                                    bert_model, word_d2_idx_freq)
-    print("w_embs_list:", w_emb_tensors_list[0].shape)
-    print(len(w_emb_tensors_list))
     sent_embs_tensor = torch.cat(sent_emb_list, dim=0)
     all_words_tensor = torch.cat(w_emb_tensors_list, dim=0)
     sent_embs_tensor = sent_embs_tensor / (0.000000000001 + sent_embs_tensor.norm(dim=1, keepdim=True))
@@ -345,14 +342,8 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
 
 def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor=None):
     sent_words_sim = torch.mm(sent_embs_tensor, all_words_tensor.t())
-    print("sent_words_sim:", sent_words_sim.shape)
-    print("sent_embs_tensor:", sent_embs_tensor.shape)
-    print("all_words_tensor:", all_words_tensor.shape)
-    print("w_freq_tensor:", w_freq_tensor.shape)
     sent_words_sim *= w_freq_tensor
     if freq_w_tensor is not None:
-        print("freq_w_tensor:", freq_w_tensor.shape)
-        print("sent_words_sim:", sent_words_sim.shape)
         sent_words_sim *= freq_w_tensor
     max_sent_idx_list = greedy_selection(sent_words_sim, top_k_max)
     return max_sent_idx_list
@@ -437,10 +428,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         # m_d2_sent_ranks['bert_sent_emb_dist_avg'] = select_by_avg_dist_boost( sent_embs_tensor_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device )
         # m_d2_sent_ranks['bert_norm_w_in_sent'] = select_by_topics( w_emb_tensors_list_bert, all_words_tensor_bert, w_freq_tensor_bert, top_k_max, device, sent_lens_bert)
         if freq_prob_tensor_bert is not None:
-            print('freq_prob_tensor_bert:', freq_prob_tensor_bert.shape)
             freq_w_4_tensor_bert = alpha / (alpha + freq_prob_tensor_bert)
-            print('freq_w_4_tensor_bert:', freq_w_4_tensor_bert.shape)
-            print("cit_all_words:", cit_all_words_tensor_bert.shape)
             m_d2_sent_ranks['bert_sent_emb_dist_avg_freq_4'] = select_by_avg_dist_boost(cit_sent_embs_tensor_bert,
                                                                                         all_words_tensor_bert,
                                                                                         w_freq_tensor_bert, top_k_max,

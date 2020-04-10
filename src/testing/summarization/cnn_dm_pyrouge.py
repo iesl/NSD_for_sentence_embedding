@@ -152,7 +152,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
         idx_list.append(indexed_tokens)
         sent_lens.append(min(len(indexed_tokens), bert_max_len))
         if word_d2_idx_freq is not None:
-            for w in tokenized_text:
+            for w in tokenized_text[:sent_lens[-1]]:
                 if w in word_d2_idx_freq:
                     w_idx, freq, freq_prob = word_d2_idx_freq[w]
                     freq_prob_list.append(freq_prob)

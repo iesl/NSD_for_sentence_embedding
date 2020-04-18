@@ -27,7 +27,7 @@ f_out = open(output_path, 'w')
 #         tokenized_text = bert_tokenizer.tokenize('[CLS] ' + line + ' [SEP]')
 #         f_out.write(' '.join(tokenized_text) + '\n')
 data = pd.read_csv(input_path, sep='\t', quoting=csv.QUOTE_NONE, header=None)
-sentences = data[3]
+sentences = data[3].astype(str)
 for line in sentences:
     tokenized_text = bert_tokenizer.tokenize('[CLS] ' + line + ' [SEP]')
     f_out.write(' '.join(tokenized_text) + '\n')

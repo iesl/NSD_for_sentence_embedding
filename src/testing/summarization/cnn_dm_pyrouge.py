@@ -330,9 +330,12 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
 
 
 # just rank the sentences without adding diversity
-def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
+def greedy_selection(sent_words_sim, top_k_max, sent_lens=None, sent_embs_words_sim=None):
     sent_words_sim[sent_words_sim < 0] = 0
-    matching_dist = (-sent_words_sim.sum(dim=1))
+    if sent_embs_words_sim is not None:
+        matching_dist = (-sent_words_sim.sum(dim=1) * sent_embs_words_sim.sum(dim=1))
+    else:
+        matching_dist = (-sent_words_sim.sum(dim=1))
     # if sent_lens is not None:
     #     matching_dist = matching_dist / sent_lens
     sent_rank_idx_list = torch.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
@@ -350,10 +353,17 @@ def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, 
 
 
 def select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens=None,
-                     freq_w_tensor=None):
+                     freq_w_tensor=None, sent_embs_tensor=None):
     sent_num = len(basis_coeff_list)
     num_words = all_words_tensor.size(0)
     sent_word_sim = torch.empty((sent_num, num_words), device=device)
+    sent_embs_words_sim = None
+    if sent_embs_tensor is not None:
+        sent_embs_words_sim = torch.mm(sent_embs_tensor, all_words_tensor.t())
+        sent_embs_words_sim *= w_freq_tensor
+        if freq_w_tensor is not None:
+            sent_embs_words_sim *= freq_w_tensor
+
     for i in range(sent_num):
         if sent_lens is None:
             basis, topic_w = basis_coeff_list[i]
@@ -364,7 +374,7 @@ def select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_ma
     sent_word_sim *= w_freq_tensor
     if freq_w_tensor is not None:
         sent_word_sim *= freq_w_tensor
-    max_sent_idx_list = greedy_selection(sent_word_sim, top_k_max, sent_lens)
+    max_sent_idx_list = greedy_selection(sent_word_sim, top_k_max, sent_lens, sent_embs_words_sim)
     return max_sent_idx_list
 
 
@@ -476,7 +486,8 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         assert len(basis_coeff_list) == len(citations)
         m_d2_sent_ranks['ours'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device)
         m_d2_sent_ranks['ours_freq_4'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max,
-                                                          device, sent_lens=None, freq_w_tensor=freq_w_4_tensor)
+                                                          device, sent_lens=None, freq_w_tensor=freq_w_4_tensor,
+                                                          sent_embs_tensor=cit_sent_embs_w_tensor)
 
     return m_d2_sent_ranks
 
@@ -634,8 +645,7 @@ for top_k in range(1, args.top_k_max + 1):
             summ_len_sum += summ_len
             effective_doc_count += 1
             true_cits = np.arange(len(citations) // 2).tolist()
-            # print(true_cits)
-            # print(selected_sent_ind)
+
             map_score += apk(true_cits, selected_sent_ind, top_k_cit_len)
             selected_sent_all.append(selected_sent)
         # selected_sent_all

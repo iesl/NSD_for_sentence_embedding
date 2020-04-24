@@ -361,9 +361,9 @@ def article_to_embs_sentvec(article, word_d2_idx_freq, device):
             if w in word_d2_idx_freq:
                 w_idx, freq, freq_prob = word_d2_idx_freq[w]
                 # sent_embs_tensor[i_sent, :] += word_norm_emb[w_idx, :]
-                sent_embs_w_tensor[i_sent, :] += np_array_to_tensor(bio_s2v.embed_unigrams([w]), device) * (
+                sent_embs_w_tensor[i_sent, :] += torch.squeeze(np_array_to_tensor(bio_s2v.embed_unigrams([w]), device)) * (
                             alpha / (alpha + freq_prob))
-                w_emb_list.append(np_array_to_tensor(bio_s2v.embed_unigrams([w_idx]), device).view(1, -1))
+                w_emb_list.append(np_array_to_tensor(bio_s2v.embed_unigrams([w]), device).view(1, -1))
         # print(len(w_emb_list))
         if len(w_emb_list) > 0:
             w_emb_tensors_list.append(torch.cat(w_emb_list, dim=0))

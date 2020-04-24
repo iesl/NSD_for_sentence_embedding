@@ -336,6 +336,7 @@ def sent_vec_preprocess_sentence(text):
 
     return ' '.join(tokens)
 
+
 def np_array_to_tensor(np_arr, device):
     return torch.from_numpy(np_arr).float().to(device)
 
@@ -351,7 +352,7 @@ def article_to_embs_sentvec(article, word_d2_idx_freq, device):
     # print(article)
     for i_sent, sent in enumerate(article):
         sent_proc = sent_vec_preprocess_sentence(sent)
-        sent_embs_tensor[i_sent, :] = np_array_to_tensor(bio_s2v.embed_sentence(sent_proc))
+        sent_embs_tensor[i_sent, :] = np_array_to_tensor(bio_s2v.embed_sentence(sent_proc), device)
         w_emb_list = []
         # print(sent)
         w_list = sent_proc.split()
@@ -360,8 +361,9 @@ def article_to_embs_sentvec(article, word_d2_idx_freq, device):
             if w in word_d2_idx_freq:
                 w_idx, freq, freq_prob = word_d2_idx_freq[w]
                 # sent_embs_tensor[i_sent, :] += word_norm_emb[w_idx, :]
-                sent_embs_w_tensor[i_sent, :] += np_array_to_tensor(bio_s2v.embed_unigrams([w])) * (alpha / (alpha + freq_prob))
-                w_emb_list.append(np_array_to_tensor(bio_s2v.embed_unigrams([w_idx])).view(1, -1))
+                sent_embs_w_tensor[i_sent, :] += np_array_to_tensor(bio_s2v.embed_unigrams([w]), device) * (
+                            alpha / (alpha + freq_prob))
+                w_emb_list.append(np_array_to_tensor(bio_s2v.embed_unigrams([w_idx]), device).view(1, -1))
         # print(len(w_emb_list))
         if len(w_emb_list) > 0:
             w_emb_tensors_list.append(torch.cat(w_emb_list, dim=0))
@@ -382,7 +384,7 @@ def article_to_embs_sentvec(article, word_d2_idx_freq, device):
         if w in word_d2_idx_freq:
             w_idx, freq, freq_prob = word_d2_idx_freq[w]
             freq_prob_tensor[i_w] = freq_prob
-            all_words_tensor[i_w, :] = np_array_to_tensor(bio_s2v.embed_unigrams([w]))
+            all_words_tensor[i_w, :] = np_array_to_tensor(bio_s2v.embed_unigrams([w]), device)
 
     return sent_embs_tensor, sent_embs_w_tensor, all_words_tensor, w_emb_tensors_list, sent_lens, freq_prob_tensor.view(
         1, -1), w_freq_tensor.view(1, -1)

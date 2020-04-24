@@ -7,6 +7,11 @@ import sys
 import json
 import time
 
+import sent2vec
+from nltk import word_tokenize
+from nltk.corpus import stopwords
+from string import punctuation
+
 sys.path.insert(0, sys.path[0] + '/../..')
 from collections import Counter
 # from sklearn.cluster import KMeans
@@ -107,6 +112,7 @@ unique_dir_name = str(uuid.uuid4())
 tempfile.tempdir = "./temp_pyrouge/" + unique_dir_name + '/'
 
 os.mkdir(tempfile.tempdir)
+stop_words = set(stopwords.words('english'))
 
 idx2word_freq = None
 if args.dict != 'None':
@@ -138,6 +144,17 @@ if 'bert' in args.method_set:
     # bert_model = BertModel.from_pretrained(BERT_model_path)
     bert_model.eval()
     bert_model.to(device)
+
+sent2vec_word_d2_idx_freq = None
+if 'sentvec' in args.method_set:
+    model_path = '/mnt/nfs/scratch1/purujitgoyal/NSD_for_sentence_embedding/models/BioSentVec_PubMed_MIMICIII-bigram_d700.bin'
+    bio_s2v = sent2vec.Sent2vecModel()
+    bio_s2v.load_model(model_path)
+    sent2vec_word_d2_idx_freq = bio_s2v.get_vocabulary()
+    all_freq = list(sent2vec_word_d2_idx_freq.values())
+    freq_sum = float(sum(all_freq))
+    for i, (w, freq) in enumerate(sent2vec_word_d2_idx_freq.items()):
+        sent2vec_word_d2_idx_freq[w] = (i, freq, freq / freq_sum)
 
 
 def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
@@ -308,6 +325,66 @@ def article_to_embs(article, word_norm_emb, word_d2_idx_freq, device):
         1, -1), w_freq_tensor.view(1, -1)
 
 
+def sent_vec_preprocess_sentence(text):
+    text = text.replace('/', ' / ')
+    text = text.replace('.-', ' .- ')
+    text = text.replace('.', ' . ')
+    text = text.replace('\'', ' \' ')
+    text = text.lower()
+
+    tokens = [token for token in word_tokenize(text) if token not in punctuation and token not in stop_words]
+
+    return ' '.join(tokens)
+
+
+def article_to_embs_sentvec(article, word_d2_idx_freq, device):
+    emb_size = bio_s2v.get_emb_size()
+    num_sent = len(article)
+    sent_embs_tensor = torch.zeros(num_sent, emb_size, device=device)
+    sent_embs_w_tensor = torch.zeros(num_sent, emb_size, device=device)
+    w_emb_tensors_list = []
+    sent_lens = torch.empty(num_sent, device=device)
+    alpha = 0.0001
+    # print(article)
+    for i_sent, sent in enumerate(article):
+        sent_proc = sent_vec_preprocess_sentence(sent)
+        sent_embs_tensor[i_sent, :] = bio_s2v.embed_sentence(sent_proc)
+        w_emb_list = []
+        # print(sent)
+        w_list = sent_proc.split()
+        for w in w_list:
+            # sys.stdout.write(w + ' ')
+            if w in word_d2_idx_freq:
+                w_idx, freq, freq_prob = word_d2_idx_freq[w]
+                # sent_embs_tensor[i_sent, :] += word_norm_emb[w_idx, :]
+                sent_embs_w_tensor[i_sent, :] += bio_s2v.embed_unigrams([w]) * (alpha / (alpha + freq_prob))
+                w_emb_list.append(bio_s2v.embed_unigrams([w_idx]).view(1, -1))
+        # print(len(w_emb_list))
+        if len(w_emb_list) > 0:
+            w_emb_tensors_list.append(torch.cat(w_emb_list, dim=0))
+        else:
+            w_emb_tensors_list.append(torch.zeros(1, emb_size, device=device))
+        sent_lens[i_sent] = len(w_list) - 1  # remove the final <eos>
+    sent_embs_tensor = sent_embs_tensor / (0.000000000001 + sent_embs_tensor.norm(dim=1, keepdim=True))
+    sent_embs_w_tensor = sent_embs_w_tensor / (0.000000000001 + sent_embs_w_tensor.norm(dim=1, keepdim=True))
+
+    artical_counter = Counter([w for sent in article for w in sent_vec_preprocess_sentence(sent).split()])
+    num_word = len(artical_counter)
+    all_words_tensor = torch.zeros(num_word, emb_size, device=device)
+    freq_prob_tensor = torch.zeros(num_word, device=device)
+    w_freq_tensor = torch.zeros(num_word, device=device)
+
+    for i_w, (w, w_freq) in enumerate(artical_counter.items()):
+        w_freq_tensor[i_w] = w_freq
+        if w in word_d2_idx_freq:
+            w_idx, freq, freq_prob = word_d2_idx_freq[w]
+            freq_prob_tensor[i_w] = freq_prob
+            all_words_tensor[i_w, :] = bio_s2v.embed_unigrams([w])
+
+    return sent_embs_tensor, sent_embs_w_tensor, all_words_tensor, w_emb_tensors_list, sent_lens, freq_prob_tensor.view(
+        1, -1), w_freq_tensor.view(1, -1)
+
+
 '''
 def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
     num_words = sent_words_sim.size(1)
@@ -447,6 +524,33 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
                                                                              all_words_tensor_bert, w_freq_tensor_bert,
                                                                              top_k_max, device, cit_sent_lens_bert,
                                                                              freq_w_tensor=freq_w_4_tensor_bert)
+    if 'sentvec' in args.method_set:
+        sentvec_embs_tensor, sentvec_embs_w_tensor, all_words_sentvec_tensor, w_emb_sentvec_tensors_list, sent_lens_sentvec, freq_prob_sentvec_tensor, w_freq_sentvec_tensor = article_to_embs_sentvec(
+            article, sent2vec_word_d2_idx_freq, device)
+        cit_sentvec_embs_tensor, cit_sentvec_embs_w_tensor, cit_all_words_sentvec_tensor, cit_w_emb_sentvec_tensors_list, cit_sent_lens_sentvec, cit_freq_prob_sentvec_tensor, cit_w_freq_sentvec_tensor = article_to_embs_sentvec(
+            citations, sent2vec_word_d2_idx_freq, device)
+        freq_w_4_sentvec_tensor = alpha / (alpha + freq_prob_sentvec_tensor)
+        m_d2_sent_ranks['sentvec_emb_dist_avg'] = select_by_avg_dist_boost(cit_sentvec_embs_tensor,
+                                                                           all_words_sentvec_tensor,
+                                                                           w_freq_sentvec_tensor, top_k_max, device)
+        m_d2_sent_ranks['sentvec_emb_dist_avg_freq_4'] = select_by_avg_dist_boost(cit_sentvec_embs_tensor,
+                                                                                  all_words_sentvec_tensor,
+                                                                                  w_freq_sentvec_tensor, top_k_max,
+                                                                                  device,
+                                                                                  freq_w_4_sentvec_tensor)
+        m_d2_sent_ranks['sentvec_emb_freq_4_dist_avg_freq_4'] = select_by_avg_dist_boost(cit_sentvec_embs_w_tensor,
+                                                                                         all_words_sentvec_tensor,
+                                                                                         w_freq_sentvec_tensor,
+                                                                                         top_k_max, device,
+                                                                                         freq_w_4_sentvec_tensor)
+        m_d2_sent_ranks['norm_w_in_sentvec'] = select_by_topics(cit_w_emb_sentvec_tensors_list,
+                                                                all_words_sentvec_tensor, w_freq_sentvec_tensor,
+                                                                top_k_max, device, cit_sent_lens_sentvec)
+        m_d2_sent_ranks['norm_w_in_sentvec_freq_4'] = select_by_topics(cit_w_emb_sentvec_tensors_list,
+                                                                       all_words_sentvec_tensor,
+                                                                       w_freq_sentvec_tensor, top_k_max, device,
+                                                                       cit_sent_lens_sentvec,
+                                                                       freq_w_tensor=freq_w_4_sentvec_tensor)
 
     if 'embs' in args.method_set:
         m_d2_sent_ranks['sent_emb_dist_avg'] = select_by_avg_dist_boost(cit_sent_embs_tensor, all_words_tensor,
@@ -579,6 +683,9 @@ if 'ours' in args.method_set:
 if 'embs' in args.method_set:
     all_method_list += ['sent_emb_dist_avg', 'sent_emb_dist_avg_freq_4', 'sent_emb_freq_4_dist_avg_freq_4',
                         'norm_w_in_sent', 'norm_w_in_sent_freq_4']
+if 'sentvec' in args.method_set:
+    all_method_list += ['sentvec_emb_dist_avg', 'sentvec_emb_dist_avg_freq_4', 'sentvec_emb_freq_4_dist_avg_freq_4',
+                        'norm_w_in_sentvec', 'norm_w_in_sentvec_freq_4']
 if 'bert' in args.method_set:
     all_method_list += ['bert_sent_emb_dist_avg', 'bert_sent_emb_dist_avg_freq_4', 'bert_norm_w_in_sent',
                         'bert_norm_w_in_sent_freq_4']
@@ -644,8 +751,8 @@ for top_k in range(1, args.top_k_max + 1):
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1
-            true_cits = np.arange(len(abstract_list[i])).tolist()
-            # true_cits = np.arange(len(citations) // 2).tolist()
+            # true_cits = np.arange(len(abstract_list[i])).tolist()
+            true_cits = np.arange(len(citations) // 2).tolist()
 
             map_score += apk(true_cits, selected_sent_ind, top_k_cit_len)
             selected_sent_all.append(selected_sent)

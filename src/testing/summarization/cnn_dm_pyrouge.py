@@ -16,7 +16,6 @@ sys.path.insert(0, sys.path[0] + '/../..')
 from collections import Counter
 # from sklearn.cluster import KMeans
 from sklearn.cluster import KMeans, MiniBatchKMeans
-from ml_metrics import apk
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -169,7 +168,7 @@ def run_bert(input_sents, device, bert_tokenizer, bert_model, word_d2_idx_freq):
         idx_list.append(indexed_tokens)
         sent_lens.append(min(len(indexed_tokens), bert_max_len))
         if word_d2_idx_freq is not None:
-            for w in tokenized_text[:sent_lens[-1]]:
+            for w in tokenized_text:
                 if w in word_d2_idx_freq:
                     w_idx, freq, freq_prob = word_d2_idx_freq[w]
                     freq_prob_list.append(freq_prob)
@@ -361,8 +360,9 @@ def article_to_embs_sentvec(article, word_d2_idx_freq, device):
             if w in word_d2_idx_freq:
                 w_idx, freq, freq_prob = word_d2_idx_freq[w]
                 # sent_embs_tensor[i_sent, :] += word_norm_emb[w_idx, :]
-                sent_embs_w_tensor[i_sent, :] += torch.squeeze(np_array_to_tensor(bio_s2v.embed_unigrams([w]), device)) * (
-                            alpha / (alpha + freq_prob))
+                sent_embs_w_tensor[i_sent, :] += torch.squeeze(
+                    np_array_to_tensor(bio_s2v.embed_unigrams([w]), device)) * (
+                                                         alpha / (alpha + freq_prob))
                 w_emb_list.append(np_array_to_tensor(bio_s2v.embed_unigrams([w]), device).view(1, -1))
         # print(len(w_emb_list))
         if len(w_emb_list) > 0:
@@ -390,7 +390,6 @@ def article_to_embs_sentvec(article, word_d2_idx_freq, device):
         1, -1), w_freq_tensor.view(1, -1)
 
 
-'''
 def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
     num_words = sent_words_sim.size(1)
     # max_sim = -10000 * torch.ones( (1,num_words), device = device )
@@ -408,21 +407,6 @@ def greedy_selection(sent_words_sim, top_k_max, sent_lens=None):
         max_sent_idx_list.append(selected_sent.item())
 
     return max_sent_idx_list
-'''
-
-
-# just rank the sentences without adding diversity
-def greedy_selection(sent_words_sim, top_k_max, sent_lens=None, sent_embs_words_sim=None):
-    sent_words_sim[sent_words_sim < 0] = 0
-    if sent_embs_words_sim is not None:
-        matching_dist = (-sent_words_sim.sum(dim=1) * sent_embs_words_sim.sum(dim=1))
-    else:
-        matching_dist = (-sent_words_sim.sum(dim=1))
-    # if sent_lens is not None:
-    #     matching_dist = matching_dist / sent_lens
-    sent_rank_idx_list = torch.argsort(matching_dist)[:min(top_k_max, len(matching_dist))]
-    sent_rank_idx_list = sent_rank_idx_list.tolist()
-    return sent_rank_idx_list
 
 
 def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, top_k_max, device, freq_w_tensor=None):
@@ -435,17 +419,10 @@ def select_by_avg_dist_boost(sent_embs_tensor, all_words_tensor, w_freq_tensor, 
 
 
 def select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device, sent_lens=None,
-                     freq_w_tensor=None, sent_embs_tensor=None):
+                     freq_w_tensor=None):
     sent_num = len(basis_coeff_list)
     num_words = all_words_tensor.size(0)
     sent_word_sim = torch.empty((sent_num, num_words), device=device)
-    sent_embs_words_sim = None
-    if sent_embs_tensor is not None:
-        sent_embs_words_sim = torch.mm(sent_embs_tensor, all_words_tensor.t())
-        sent_embs_words_sim *= w_freq_tensor
-        if freq_w_tensor is not None:
-            sent_embs_words_sim *= freq_w_tensor
-
     for i in range(sent_num):
         if sent_lens is None:
             basis, topic_w = basis_coeff_list[i]
@@ -456,7 +433,7 @@ def select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_ma
     sent_word_sim *= w_freq_tensor
     if freq_w_tensor is not None:
         sent_word_sim *= freq_w_tensor
-    max_sent_idx_list = greedy_selection(sent_word_sim, top_k_max, sent_lens, sent_embs_words_sim)
+    max_sent_idx_list = greedy_selection(sent_word_sim, top_k_max, sent_lens)
     return max_sent_idx_list
 
 
@@ -595,8 +572,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
         assert len(basis_coeff_list) == len(citations)
         m_d2_sent_ranks['ours'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max, device)
         m_d2_sent_ranks['ours_freq_4'] = select_by_topics(basis_coeff_list, all_words_tensor, w_freq_tensor, top_k_max,
-                                                          device, sent_lens=None, freq_w_tensor=freq_w_4_tensor,
-                                                          sent_embs_tensor=cit_sent_embs_w_tensor)
+                                                          device, sent_lens=None, freq_w_tensor=freq_w_4_tensor)
 
     return m_d2_sent_ranks
 
@@ -709,9 +685,8 @@ not_inclusive_methods = set(
      'sent_emb_cluster_word', 'sent_emb_cluster_word_freq_4'])
 
 # pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'ROUGE-1-F', 'ROUGE-2-F', 'ROUGE-SU4-F']
-# pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'rouge_1_f_score', 'rouge_2_f_score', 'rouge_su*_f_score',
-#                  'rouge_l_f_score']
-pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'map score']
+pretty_header = ['method_name', 'sent_num', 'avg_sent_len', 'rouge_1_f_score', 'rouge_2_f_score', 'rouge_su*_f_score',
+                 'rouge_l_f_score']
 
 unique_dir_name = str(uuid.uuid4())
 temp_file_prefix = temp_file_dir + unique_dir_name + '/'
@@ -729,7 +704,6 @@ for top_k in range(1, args.top_k_max + 1):
         selected_sent_all = []
         summ_len_sum = 0
         effective_doc_count = 0
-        map_score = 0.0
         for i in range(len(fname_list)):
             file_name = fname_list[i]
             article = article_list[i]
@@ -749,17 +723,11 @@ for top_k in range(1, args.top_k_max + 1):
             if method in not_inclusive_methods:
                 ## TODO:: article -> citation
                 selected_sent = [citations[s].lower() for s in sent_rank[top_k_cit_len - 1]]
-                selected_sent_ind = sent_rank[top_k_cit_len - 1]
             else:
                 selected_sent = [citations[s].lower() for s in sent_rank[:top_k_cit_len]]
-                selected_sent_ind = sent_rank[:top_k_cit_len]
             summ_len = sum([len(sent.split()) for sent in set(selected_sent)])
             summ_len_sum += summ_len
             effective_doc_count += 1
-            # true_cits = np.arange(len(abstract_list[i])).tolist()
-            true_cits = np.arange(len(citations) // 2).tolist()
-
-            map_score += apk(true_cits, selected_sent_ind, top_k_cit_len)
             selected_sent_all.append(selected_sent)
         # selected_sent_all
         if len(selected_sent_all) != len(abstract_list):
@@ -767,9 +735,7 @@ for top_k in range(1, args.top_k_max + 1):
             logger.logging(str(len(abstract_list)))
             logger.logging("do not run " + method)
             continue
-        map_score /= effective_doc_count
-        # score = eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, tempfile.tempdir)
-
+        score = eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, tempfile.tempdir)
         # rouge = Pythonrouge(summary_file_exist=False, summary=selected_sent_all, reference=abstract_list, n_gram=2, ROUGE_SU4=True, ROUGE_L=False,
         #            #recall_only=True, stemming=True, stopwords=True,
         #            #recall_only=False, stemming=True, stopwords=True,
@@ -779,14 +745,11 @@ for top_k in range(1, args.top_k_max + 1):
         #            resampling=True, samples=1000, favor=True, p=0.5)
         # score = rouge.calc_score()
         avg_summ_len = summ_len_sum / float(effective_doc_count)
-        # logger.logging(str(score))
-        logger.logging("MAP Score: " + str(map_score))
+        logger.logging(str(score))
         logger.logging("summarization length " + str(avg_summ_len))
-        # m_d2_output_list[method].append(
-        #     [method, str(top_k), str(avg_summ_len), str(score[pretty_header[3]]), str(score[pretty_header[4]]),
-        #      str(score[pretty_header[5]]), str(score[pretty_header[6]])])
         m_d2_output_list[method].append(
-            [method, str(top_k), str(avg_summ_len), str(map_score)])
+            [method, str(top_k), str(avg_summ_len), str(score[pretty_header[3]]), str(score[pretty_header[4]]),
+             str(score[pretty_header[5]]), str(score[pretty_header[6]])])
 
 cmd = 'rm -r ' + tempfile.tempdir
 os.system(cmd)

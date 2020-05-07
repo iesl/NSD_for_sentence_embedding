@@ -735,7 +735,7 @@ for top_k in range(1, args.top_k_max + 1):
             logger.logging(str(len(abstract_list)))
             logger.logging("do not run " + method)
             continue
-        score = eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, tempfile.tempdir)
+        score = eval_by_pyrouge(selected_sent_all, article_list, temp_file_prefix, tempfile.tempdir)
         # rouge = Pythonrouge(summary_file_exist=False, summary=selected_sent_all, reference=abstract_list, n_gram=2, ROUGE_SU4=True, ROUGE_L=False,
         #            #recall_only=True, stemming=True, stopwords=True,
         #            #recall_only=False, stemming=True, stopwords=True,

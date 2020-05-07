@@ -578,7 +578,7 @@ def rank_sents(basis_coeff_list, article, citations, word_norm_emb, word_d2_idx_
 
 
 def eval_by_pyrouge(selected_sent_all, abstract_list, temp_file_prefix, temp_dir_for_pyrouge):
-    r = Rouge155(log_level=logging.ERROR)
+    r = Rouge155(log_level=logging.ERROR, metrics=['rouge-2', 'rouge-l', 'rouge-w'], max_n=2)
 
     # r.model_dir = temp_file_dir
     # r.system_dir = temp_file_dir
@@ -697,7 +697,7 @@ m_d2_output_list = {}
 for m in all_method_list:
     m_d2_output_list[m] = []
 
-for top_k in range(1, args.top_k_max + 1):
+for top_k in range(3, args.top_k_max + 1):
     logger.logging("top k: " + str(top_k))
     for method in all_method_list:
         logger.logging(method)

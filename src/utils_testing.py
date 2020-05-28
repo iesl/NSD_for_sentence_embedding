@@ -168,10 +168,11 @@ def print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, 
         #outf.write('{} batch, {}th sent: '.format(i_batch, i_sent)+' '.join(feature_text[i_sent])+'\n')
         if word_imp_sim is not None:
             #outf.write(' '.join('{0:.2f}'.format(x/4.0) for x in word_imp_sim[i_sent]])+'\n')
-            outf.write(' '.join(['\\colorbox{{c{0:02}}}{{{1}}}'.format(int(100-y*100/4.0),x ) for x, y in zip( feature_text[i_sent], word_imp_sim[i_sent] )])+'\n')
+            outf.write(' '.join(['\\colorbox{{c{0:02}}}{{{1}}}'.format(int(100-y*100/4.0),x ) for x, y in zip( feature_text[i_sent], word_imp_sim[i_sent] )])+' \\\\\n')
         else:
             outf.write(' '.join(feature_text[i_sent])+'\n')
-
+        
+        outf.write('------------------------K={}------------------------ \\\\\n\\small\n'.format(n_basis))
         for j in range(n_basis):
             org_ind = coeff_order[i_sent, j]
             #outf.write(str(j)+', org '+str(org_ind)+', '+str( coeff_sum[i_sent,org_ind,0] )+' - '+str( coeff_sum[i_sent,org_ind,1] )+': ')
@@ -179,8 +180,8 @@ def print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, 
             for k in range(top_k):
                 word_nn = idx2word_freq[top_index[i_sent,k,org_ind].item()][0]
                 outf.write( word_nn+' {:5.3f}'.format(top_value[i_sent,k,org_ind].item())+' ' )
-            outf.write('\n')
-        outf.write('\n')
+            outf.write(' \\\\\n')
+        outf.write('\n\\normalsize\n')
 
 def dump_prediction_to_json(feature, basis_norm_pred, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, basis_json, org_sent_list, encoded_emb, avg_encoded_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff):
     n_basis = coeff_order.shape[1]
@@ -296,14 +297,14 @@ def output_sent_basis(dataloader, org_sent_list, parallel_encoder, parallel_deco
 
 def visualize_topics_val(dataloader, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, n_basis, max_batch_num):
     #topics_num = 0
-    top_k = 5
+    top_k = 3
     with torch.no_grad():
         for i_batch, sample_batched in enumerate(dataloader):
             feature, target = sample_batched
 
             basis_norm_pred, coeff_order, coeff_sum, top_value, top_index, encoded_emb, avg_encoded_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff = predict_batch(feature, parallel_encoder, parallel_decoder, word_norm_emb, n_basis, top_k)
-            #print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf, word_imp_sim)
-            print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf)
+            print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf, word_imp_sim)
+            #print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf)
 
             if i_batch >= max_batch_num:
                 break

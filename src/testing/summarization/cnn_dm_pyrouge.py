@@ -445,6 +445,7 @@ abstract_list = []
 
 stories = os.listdir(args.input)
 for file_name in stories:
+#for file_name in ['1.story','2.story']:
     print("Processing "+ file_name)
     sys.stdout.flush()
     #base_name = os.path.basename(file_name)

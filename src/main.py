@@ -242,8 +242,8 @@ if args.trans_nhid < 0:
         args.trans_nhid = output_emb_size
 
 
-w_freq_user = counter_to_tensor(user_idx2word_freq,device)
-w_freq_tag = counter_to_tensor(tag_idx2word_freq,device)
+w_freq = counter_to_tensor(idx2word_freq,device)
+#w_freq_tag = counter_to_tensor(tag_idx2word_freq,device)
 
 ########################
 print("Building models")
@@ -327,7 +327,7 @@ def evaluate(dataloader, external_emb, current_coeff_opt):
 
             compute_target_grad = False
             #loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, parallel_decoder, input_emb, target, args.n_basis, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad)
-            loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq_user, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
+            loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
             loss = loss_set + args.neg_sample_w * loss_set_neg + args.w_loss_coeff* loss_coeff_pred
             batch_size = feature.size(0)
             total_loss += loss * batch_size
@@ -376,7 +376,7 @@ def train_one_epoch(dataloader_train, external_emb, lr, current_coeff_opt, split
         #print(compute_target_grad)
         #print(input_emb.requires_grad)
         #loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, parallel_decoder, input_emb, target, args.n_basis, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad)
-        loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq_tag, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
+        loss_set, loss_set_reg, loss_set_div, loss_set_neg, loss_coeff_pred = nsd_loss.compute_loss_set(output_emb_last, basis_pred, coeff_pred, input_emb, target, args.L1_losss_B, device, w_freq, current_coeff_opt, compute_target_grad, args.coeff_opt_algo)
         if torch.isnan(loss_set):
             sys.stdout.write('nan, ')
             continue

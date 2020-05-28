@@ -73,9 +73,12 @@ def estimate_coeff_mat_batch_max(target_embeddings, basis_pred, device):
     coeff = XY / XX
     cos_sim = XY / basis_pred_norm
     #coeff should have dimension ( n_batch, n_basis, n_set)
-    max_v, max_i = torch.max(coeff, dim = 1, keepdim=True)
+    #max_v, max_i = torch.max(coeff, dim = 1, keepdim=True)
     max_v_cos, max_i_cos = torch.max(cos_sim, dim = 1, keepdim=True)
+    max_v = torch.gather( coeff, dim = 1, index = max_i_cos)
     max_v[max_v<0] = 0
+    max_v[max_v>1] = 1
+    
     
     coeff_mat_trans = torch.zeros(batch_size, basis_pred.size(1), target_embeddings.size(1), requires_grad= False, device=device )
     coeff_mat_trans.scatter_(dim=1, index = max_i_cos, src = max_v)

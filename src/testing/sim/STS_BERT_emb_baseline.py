@@ -4,6 +4,7 @@ sys.path.insert(0, sys.path[0]+'/../..')
 from scipy.stats import spearmanr, pearsonr
 import numpy as np
 import json
+import math
 from scipy.spatial import distance
 #import torch
 #import utils
@@ -11,7 +12,8 @@ from scipy.spatial import distance
 import getopt
 
 #method = "BERT"
-method = "ELMo"
+#method = "ELMo"
+method = "sent2vec"
 #method = "ST"
 
 #sent_emb_file_name = "./gen_log/ELMo_large_sts-dev_cased.json"
@@ -19,10 +21,28 @@ method = "ELMo"
 #sent_emb_file_name = "./gen_log/ELMo_w_sim_n1_sts-dev_cased.json"
 #sent_emb_file_name = "./gen_log/ELMo_large_sts-test_cased.json"
 #sent_emb_file_name = "./gen_log/ELMo_w_sts-test_cased.json"
-sent_emb_file_name = "./gen_log/ELMo_w_sim_n1_sts-test_cased.json"
+#sent_emb_file_name = "./gen_log/ELMo_w_sim_n1_sts-test_cased.json"
+#sent_emb_file_name = "./gen_log/ELMo_w_sim_only_n10_sts-test_cased.json"
 #sent_emb_file_name = "./gen_log/ELMo_sts_2012-6_test_cased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_n1_sts-test_cased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_n10_sts-test_cased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_prob_sts-test_cased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_uni_sts-test_cased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_n10_sts-test_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_only_n10_sts-test_uncased.json"
+sent_emb_file_name = "./gen_log/sent2vec_w_sim_only_n1_sts-test_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_prob_sts-test_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_uni_sts-test_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_n10_sqrt2_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_n10_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_n1_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_only_n10_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_sim_only_n1_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_prob_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_prob_sqrt_sts-dev_uncased.json"
+#sent_emb_file_name = "./gen_log/sent2vec_w_uni_sts-dev_uncased.json"
 #sent_emb_file_name = "./gen_log/BERT_large_sts-dev_cased.json"
-sent_emb_file_name = "./gen_log/BERT_large_w_sts-dev_cased.json"
+#sent_emb_file_name = "./gen_log/BERT_large_w_sts-dev_cased.json"
 #sent_emb_file_name = "./gen_log/BERT_large_w_sts-test_cased.json"
 #sent_emb_file_name = "./gen_log/BERT_base_w_sts-dev_cased.json"
 #sent_emb_file_name = "./gen_log/BERT_base_w_sts-test_cased.json"
@@ -36,7 +56,7 @@ sent_emb_file_name = "./gen_log/BERT_large_w_sts-dev_cased.json"
 #sent_emb_file_name = "./gen_log/ST_d600_sts-test_36k.json"
 #sent_emb_file_name = "./gen_log/ST_d600_sts_2012-6_test_36k.json"
 
-gt_file_name = "./dataset_testing/STS/stsbenchmark/sts-dev.csv"
+#gt_file_name = "./dataset_testing/STS/stsbenchmark/sts-dev.csv"
 #gt_file_name = "./dataset_testing/STS/stsbenchmark/sts-train.csv"
 gt_file_name = "./dataset_testing/STS/stsbenchmark/sts-test.csv"
 #gt_file_name = "./dataset_testing/STS/sts_2012_train"
@@ -94,6 +114,12 @@ elif method == "ELMo":
         sent2emb[sent] = [avg_emb, cls_emb]
 
     method_names = ['ELMo_avg_emb','ELMo_proc_emb']
+elif method == "sent2vec":
+    sent2emb = {}
+    for sent, proc_idx, avg_emb in embedding_list:
+        sent2emb[sent] = [avg_emb]
+    method_names = ['sent2vec_emb']
+
     
 
 pred_scores = []
@@ -106,7 +132,11 @@ for fields in testing_list:
         sent_emb_1 = sent2emb[sent_1][j]
         sent_emb_2 = sent2emb[sent_2][j]
         #print(sent_emb_1)
-        score_pred[j] = 1 - distance.cosine(sent_emb_1, sent_emb_2)
+        if sum(sent_emb_1) == 0 or sum(sent_emb_2) == 0:
+            score_pred[j] = 0
+        else:
+            score_pred[j] = 1 - distance.cosine(sent_emb_1, sent_emb_2)
+        #assert not math.isnan(score_pred[j]), print(sent_emb_1, sent_emb_2)
     pred_scores.append(score_pred)
 #print(pred_scores)
 

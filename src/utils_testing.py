@@ -283,7 +283,7 @@ def output_sent_basis_summ(dataloader, parallel_encoder, parallel_decoder, n_bas
 
 def output_sent_basis(dataloader, org_sent_list, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, n_basis, outf_vis):
     basis_json = []
-    top_k = 5
+    top_k = 3
     with torch.no_grad():
         for i_batch, sample_batched in enumerate(dataloader):
             if i_batch % 100 == 0:
@@ -291,9 +291,25 @@ def output_sent_basis(dataloader, org_sent_list, parallel_encoder, parallel_deco
                 sys.stdout.flush()
             feature, target = sample_batched
             basis_norm_pred, coeff_order, coeff_sum, top_value, top_index, encoded_emb, avg_encoded_emb, word_imp_sim, word_imp_sim_coeff, word_imp_coeff = predict_batch(feature, parallel_encoder, parallel_decoder, word_norm_emb, n_basis, top_k)
-            print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf_vis)
+            #print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf_vis)
+            print_basis_text(feature, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, i_batch, outf_vis, word_imp_sim)
             dump_prediction_to_json(feature, basis_norm_pred, idx2word_freq, coeff_order, coeff_sum, top_value, top_index, basis_json, org_sent_list, encoded_emb, avg_encoded_emb, word_imp_sim,  word_imp_sim_coeff, word_imp_coeff)
     return basis_json
+
+def test_time(dataloader, parallel_encoder, parallel_decoder, max_batch_num):
+    import time
+    encoding_time_list = []
+    with torch.no_grad():
+        for i_batch, sample_batched in enumerate(dataloader):
+            feature, target = sample_batched
+            t = time.time()
+            output_emb_last, output_emb = parallel_encoder(feature)
+            basis_pred =  parallel_decoder(output_emb_last, output_emb, predict_coeff_sum = False)
+            elapsed = time.time() - t
+            encoding_time_list.append(elapsed)
+            if i_batch >= max_batch_num:
+                break
+    print("time: ", np.mean(encoding_time_list), np.var(encoding_time_list))
 
 def visualize_topics_val(dataloader, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, n_basis, max_batch_num):
     #topics_num = 0
@@ -878,7 +894,7 @@ def predict_hyper_scores(testing_pair_loader, L1_losss_B, device, word2emb, othe
     return pred_scores, method_names, OOV_value
 
 #def predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True):
-def predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True, compute_WMD = False, pc_mode = 'self', path_to_pc = ''):
+def predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True, compute_WMD = False, pc_mode = 'self', path_to_pc = '', outf_vis = ""):
     
 #    def weighted_sum_emb_list_sq(w_embs, w_imp):
 #        emb_size = w_embs[0].size
@@ -1002,6 +1018,8 @@ def predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_
 
         return local_w_embs, local_w_embs_wt
 
+    if len(outf_vis) > 0:
+        f_out_vis = open(outf_vis,'w')
     #def max_cosine_sim(target, source, target_w):
     #    cosine_sim_s_to_t, nn_source_idx = nsd_loss.estimate_coeff_mat_batch_max_cos(target, source)
     #    #cosine_sim should have dimension (n_batch,n_set)
@@ -1204,6 +1222,15 @@ def predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_
     #method_names = ["WMD or rnd", "WMD weighted or rnd", "sim_avg_st", "dist_avg_s", "sim_w_sim_st", "dist_w_sim_s", "sim_freq_4_w_sim_st", "dist_freq_4_w_sim_s", "WMD exact or rnd", "WMD weighted exact or rnd", "WMD reg or rnd", "Wasserstein", "Wasserstein_e2", "Wasserstein_e05", "Wasserstein_w", "kmeans", "kmeans_w", "SC_rmsprop", "SC_rmsprop_w", "en_sent_emb", "avg_en_word_emb"] + scores_str + scores_str_local_wt
     #method_names = ["WMD or rnd", "WMD weighted or rnd", "sim_avg_st", "dist_avg_s", "sim_w_sim_st", "dist_w_sim_s", "sim_freq_4_w_sim_st", "dist_freq_4_w_sim_s", "WMD exact or rnd", "WMD weighted exact or rnd", "WMD reg or rnd", "Wasserstein", "Wasserstein_e2", "Wasserstein_e05", "Wasserstein_w", "kmeans", "kmeans_w", "SC_rmsprop", "SC_rmsprop_w", "en_sent_emb", "avg_en_word_emb"] + scores_str + scores_str_local_wt
     method_names = ["WMD exact or rnd", "WMD weighted freq4 exact or rnd", "WMD weighted freq4 sim exact or rnd", "WMD weighted sim exact or rnd",  "Wasserstein", "Wasserstein_w", "kmeans", "kmeans_w", "SC_rmsprop", "SC_rmsprop_w", "en_sent_emb", "avg_en_word_emb"] + scores_str + scores_str_local_wt
+    
+    if len(outf_vis) > 0:
+        for method in method_names:
+            f_out_vis.write(method + ',')
+        f_out_vis.write('\n')
+        for idx in range(len(pred_scores)):
+            f_out_vis.write(','.join(map(str,pred_scores[idx]))+'\n')
+        f_out_vis.close()
+    
     if pc_mode == 'none':
         return pred_scores, method_names
 

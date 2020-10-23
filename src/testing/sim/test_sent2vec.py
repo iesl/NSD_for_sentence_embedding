@@ -1,25 +1,37 @@
-import torch
-from allennlp.commands.elmo import ElmoEmbedder
+#import torch
+#from allennlp.commands.elmo import ElmoEmbedder
+import sent2vec
 import sys
 import json
 import sys
 sys.path.insert(0,sys.path[0]+'/../..')
 from utils import load_idx2word_freq, load_word_dict
 from utils_testing import compute_freq_prob
+import numpy as np
 
-print(torch.version.cuda)
-print(torch.backends.cudnn.version())
+#print(torch.version.cuda)
+#print(torch.backends.cudnn.version())
 
-#weighted_by_prob = True
-weighted_by_prob = False
+weighted_by_prob = True
+#weighted_by_prob = False
 
-weighted_by_w_sim = True
-#weighted_by_w_sim = False
+#weighted_by_w_sim = True
+weighted_by_w_sim = False
+
+#sqrt_w_sim = True
+sqrt_w_sim = False
+
+lower_case = True
+
+sent2vec_model_path = '/mnt/nfs/scratch1/hschang/language_modeling/NSD_for_sentence_embedding/resources/wiki_unigrams.bin'
 
 root_dir = "/iesl/canvas/hschang/language_modeling/NSD_for_sentence_embedding/"
 root_dir = "/mnt/nfs/scratch1/hschang/language_modeling/NSD_for_sentence_embedding/"
 
-freq_dict_path = root_dir+"/data/processed/wiki2016_min100/dictionary_index"
+if lower_case:
+    freq_dict_path = root_dir+"/data/processed/wiki2016_lower_min100/dictionary_index"
+else:
+    freq_dict_path = root_dir+"/data/processed/wiki2016_min100/dictionary_index"
 
 #input_path = root_dir+"/dataset_testing/phrase/WikiSRS_rel_sim_test"
 #input_path = root_dir+"/dataset_testing/phrase/WikiSRS_rel_sim_test_upper"
@@ -33,14 +45,33 @@ freq_dict_path = root_dir+"/data/processed/wiki2016_min100/dictionary_index"
 #output_path = root_dir+"/gen_log/ELMo_large_sts-dev_cased.json"
 #input_path = root_dir+"/dataset_testing/STS/stsbenchmark/sts-train_org"
 #output_path = root_dir+"/gen_log/ELMo_large_sts-train_cased.json"
-input_path = root_dir+"/dataset_testing/STS/stsbenchmark/sts-test_org"
+#input_path = root_dir+"/dataset_testing/STS/stsbenchmark/sts-test_org"
 #w_sim_path = root_dir+"/gen_log/STS_test_wiki2016_glove_trans_n1_bsz200_ep2_2_final.json"
-w_sim_path = root_dir+"/gen_log/STS_test_wiki2016_glove_trans_n10_bsz200_ep2_0_final.json"
-#output_path = root_dir+"/gen_log/ELMo_w_sim_n1_sts-test_cased.json"
-output_path = root_dir+"/gen_log/ELMo_w_sim_only_n10_sts-test_cased.json"
-#input_path = root_dir+"/dataset_testing/STS/stsbenchmark/sts-dev_org"
-#w_sim_path = root_dir+"/gen_log/STS_dev_wiki2016_glove_trans_n10_bsz200_ep2_0_final.json"
+#w_sim_path = root_dir+"/gen_log/STS_test_wiki2016_glove_trans_n10_bsz200_ep2_0_final.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_n1_sts-test_cased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_n10_sts-test_cased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_prob_sts-test_cased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_uni_sts-test_cased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_n10_sts-test_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_only_n1_sts-test_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_only_n10_sts-test_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_prob_sts-test_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_uni_sts-test_uncased.json"
+input_path = root_dir+"/dataset_testing/STS/stsbenchmark/sts-dev_org"
+w_sim_path = root_dir+"/gen_log/STS_dev_wiki2016_glove_trans_n10_bsz200_ep2_0_final.json"
 #w_sim_path = root_dir+"/gen_log/STS_dev_wiki2016_glove_trans_n1_bsz200_ep2_2_final.json"
+#output_path = root_dir+"/gen_log/sentvec_w_sim_n1_sts-dev_cased.json"
+#output_path = root_dir+"/gen_log/sentvec_w_sim_n10_sts-dev_cased.json"
+#output_path = root_dir+"/gen_log/sentvec_w_prob_sts-dev_cased.json"
+#output_path = root_dir+"/gen_log/sentvec_w_uni_sts-dev_cased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_n1_sts-dev_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_n10_sts-dev_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_n10_sqrt2_sts-dev_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_only_n1_sts-dev_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_sim_only_n10_sts-dev_uncased.json"
+output_path = root_dir+"/gen_log/sent2vec_w_prob_sts-dev_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_prob_sqrt_sts-dev_uncased.json"
+#output_path = root_dir+"/gen_log/sent2vec_w_uni_sts-dev_uncased.json"
 #output_path = root_dir+"/gen_log/ELMo_w_sim_n1_sts-dev_cased.json"
 #input_path = root_dir+"/dataset_testing/STS/sts_train_2012_org"
 #output_path = root_dir+"/gen_log/ELMo_sts_2012_train_cased.json"
@@ -55,7 +86,9 @@ output_path = root_dir+"/gen_log/ELMo_w_sim_only_n10_sts-test_cased.json"
 #input_path = root_dir+"/dataset_testing/phrase/HypeNet_WordNet_test_org_unique"
 #output_path = root_dir+"/gen_log/ELMo_large_HypeNet_WordNet_phrase_test.json"
 
-elmo = ElmoEmbedder(cuda_device=0)
+model = sent2vec.Sent2vecModel()
+model.load_model(sent2vec_model_path)
+#elmo = ElmoEmbedder(cuda_device=0)
 #tokens = ["I", "ate", "an", "apple", "for", "breakfast"]
 #vectors = elmo.embed_sentence(tokens)
 #print(vectors)
@@ -84,10 +117,14 @@ with open(input_path) as f_in:
     for line in f_in:
         org_sent, proc_sent = line.rstrip().split('\t')
         org_sent_list.append(org_sent)
-        proc_sent_list.append(proc_sent.split())
+        if lower_case:
+            proc_sent_proc = proc_sent.lower()
+        else:
+            proc_sent_proc = proc_sent
+        proc_sent_list.append(proc_sent_proc.split())
         if word_d2_idx_freq is not None:
             freq_prob_list_i = []
-            for w in proc_sent.split():
+            for w in proc_sent_proc.split():
                 if w in word_d2_idx_freq:
                     w_idx, freq, freq_prob = word_d2_idx_freq[w]
                     freq_prob_list_i.append( alpha / (alpha + freq_prob) )
@@ -123,28 +160,38 @@ for i in range(len(org_sent_list)):
         w_sim_inner.append(w_sim_list[i])
         #freq_prob_tensor[storing_idx, :sent_len] = torch.tensor(freq_prob_list[i], device = device)
     if storing_idx == batch_size - 1 or i == len(org_sent_list)-1:
-        activations, mask = elmo.batch_to_embeddings(proc_sent_inner)
+        #activations, mask = elmo.batch_to_embeddings(proc_sent_inner)
     
         for inner_i in range(len(org_sent_inner)):
             sent_len = length_list[inner_i]
-            first_layer = activations[inner_i,0,:sent_len,:]
-            last_layer = activations[inner_i,-1,:sent_len,:]
-            weights_inner = torch.tensor([1.0]*sent_len, device = 'cuda')
+            #first_layer = activations[inner_i,0,:sent_len,:]
+            #last_layer = activations[inner_i,-1,:sent_len,:]
+            uni_embs = model.embed_unigrams(proc_sent_inner[inner_i])
+            #weights_inner = torch.tensor([1.0]*sent_len, device = 'cuda')
+            weights_inner = np.array([1.0]*sent_len)
             if len(freq_prob_list) > 0:
-                weights_inner *= torch.tensor(freq_prob_inner[inner_i], device = 'cuda')
+                if sqrt_w_sim:
+                    weights_inner *= np.sqrt(freq_prob_inner[inner_i])
+                else:
+                    weights_inner *= np.array(freq_prob_inner[inner_i])
+                #torch.tensor(freq_prob_inner[inner_i], device = 'cuda')
             if len(w_sim_list) > 0:
-                weights_inner *= torch.tensor(w_sim_inner[inner_i], device = 'cuda')
-            avg_emb = torch.sum(activations[inner_i,-1,:sent_len,:]*weights_inner.unsqueeze(-1) , dim = 0).squeeze() / (torch.sum(weights_inner) + 1e-12)
+                if sqrt_w_sim:
+                    weights_inner *= np.sqrt(w_sim_inner[inner_i])
+                else:
+                    weights_inner *= np.array(w_sim_inner[inner_i])
+                #torch.tensor(w_sim_inner[inner_i], device = 'cuda')
+            avg_emb = np.sum(uni_embs * weights_inner.reshape(sent_len,-1) , axis = 0) / (np.sum(weights_inner) + 1e-12)
 
             #if len(freq_prob_list) > 0:
             #    freq_prob_tensor = torch.tensor(freq_prob_inner[inner_i], device = 'cuda')
             #    avg_emb = torch.sum(activations[inner_i,-1,:sent_len,:]*freq_prob_tensor.unsqueeze(-1) , dim = 0).squeeze() / (torch.sum(freq_prob_tensor) + 1e-12)
             #else:
             #    avg_emb = last_layer.mean(dim=0)
-            proc_emb_last = torch.cat([ last_layer[0,:], last_layer[sent_len-1,:], last_layer[0,:] - last_layer[sent_len-1,:], last_layer[0,:]*last_layer[sent_len-1,:] ])
-            proc_emb_first = torch.cat([ first_layer[0,:], first_layer[sent_len-1,:], first_layer[0,:] - first_layer[sent_len-1,:], first_layer[0,:]*first_layer[sent_len-1,:] ])
-            proc_emb = torch.cat([proc_emb_last, proc_emb_first])
-            output_list.append([ org_sent_inner[inner_i], proc_sent_inner[inner_i], avg_emb.tolist(), proc_emb.tolist() ])
+            #proc_emb_last = torch.cat([ last_layer[0,:], last_layer[sent_len-1,:], last_layer[0,:] - last_layer[sent_len-1,:], last_layer[0,:]*last_layer[sent_len-1,:] ])
+            #proc_emb_first = torch.cat([ first_layer[0,:], first_layer[sent_len-1,:], first_layer[0,:] - first_layer[sent_len-1,:], first_layer[0,:]*first_layer[sent_len-1,:] ])
+            #proc_emb = torch.cat([proc_emb_last, proc_emb_first])
+            output_list.append([ org_sent_inner[inner_i], proc_sent_inner[inner_i], avg_emb.tolist()])
 
 with open(output_path, 'w') as outf:
     json.dump(output_list, outf, indent = 1)

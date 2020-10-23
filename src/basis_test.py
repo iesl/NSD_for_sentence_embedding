@@ -72,14 +72,35 @@ print("Loading Models")
 
 parallel_encoder, parallel_decoder, encoder, decoder, word_norm_emb = loading_all_models(args, idx2word_freq, device, max_sent_len)
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def print_parameters(model, excluding_prefix = None):
+    parameter_sum = 0
+    for name, param in model.named_parameters():
+        if excluding_prefix is not None and excluding_prefix == name[:len(excluding_prefix)]:
+            print("Skipping ", name, param.numel())
+            continue
+        if param.requires_grad:
+            print(name, param.numel())
+            parameter_sum += param.numel()
+    return parameter_sum
+
+#print("encoder after filtering ", print_parameters(encoder, 'encoder'))
+#print("decoder after filtering ", print_parameters(decoder, 'coeff'))
+#print(count_parameters(encoder))
+#print(count_parameters(decoder))
+
+
 encoder.eval()
 decoder.eval()
 
 with open(args.outf, 'w') as outf:
-    outf.write('Shuffled Validation Topics:\n\n')
-    utils_testing.visualize_topics_val(dataloader_val_shuffled, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
-    outf.write('Validation Topics:\n\n')
-    utils_testing.visualize_topics_val(dataloader_val, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
+    utils_testing.test_time(dataloader_val_shuffled, encoder, decoder, args.max_batch_num)
+    #outf.write('Shuffled Validation Topics:\n\n')
+    #utils_testing.visualize_topics_val(dataloader_val_shuffled, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
+    #outf.write('Validation Topics:\n\n')
+    #utils_testing.visualize_topics_val(dataloader_val, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)
     if dataloader_train:
         outf.write('Training Topics:\n\n')
         utils_testing.visualize_topics_val(dataloader_train, parallel_encoder, parallel_decoder, word_norm_emb, idx2word_freq, outf, args.n_basis, args.max_batch_num)

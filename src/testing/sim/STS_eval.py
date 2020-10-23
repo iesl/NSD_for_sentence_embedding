@@ -14,6 +14,7 @@ pc_mode = 'self'
 #pc_mode = 'save'
 #pc_mode = 'load'
 
+outf_vis = "eval_log/STS_vis"
 #path_to_pc = './gen_log/pc_sts_train_n10'
 path_to_pc = ''
 
@@ -143,9 +144,10 @@ if no_filter_before:
 
 testing_pair_loader, other_info = utils_testing.build_loader_from_pairs(testing_list, sent_d2_topics, bsz, device)
 
+
 with torch.no_grad():
     #pred_scores, method_names = utils_testing.predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True, compute_WMD = False)
-    pred_scores, method_names = utils_testing.predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True, compute_WMD = True, pc_mode = pc_mode, path_to_pc = path_to_pc)
+    pred_scores, method_names = utils_testing.predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True, compute_WMD = True, pc_mode = pc_mode, path_to_pc = path_to_pc, outf_vis = outf_vis )
     #pred_scores, method_names = utils_testing.predict_sim_scores(testing_pair_loader, L1_losss_B, device, word2emb, other_info, word_d2_idx_freq, OOV_sim_zero = True, compute_WMD = False, pc_mode = pc_mode, path_to_pc = path_to_pc)
 
 def get_lower_half(score_list):

@@ -398,7 +398,8 @@ class SEQ2EMB(nn.Module):
             #self.encoder = nn.Embedding.from_pretrained(external_emb.clone(), freeze = False)
             if len(init_idx) > 0:
                 print("Randomly initializes embedding for ", len(init_idx), " words")
-                device = self.encoder.weight.data.get_device()
+                #device = self.encoder.weight.data.get_device()
+                device = self.encoder.weight.data.device
                 extra_init_emb = torch.randn(len(init_idx), ninp, requires_grad = False, device = device)
                 #extra_init_emb = extra_init_emb / (0.000000000001 + extra_init_emb.norm(dim = 1, keepdim=True))
                 self.encoder.weight.data[init_idx, :] = extra_init_emb

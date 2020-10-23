@@ -1,11 +1,11 @@
 #!/bin/bash
 #MIN_FREQ=$1
 MIN_FREQ=100
-LOWERCASE=True
+#LOWERCASE=True
 echo $MIN_FREQ
 INPUT_FILE="./data/raw/wiki2016.txt"
-#DATA_NAME="wiki2016_min$MIN_FREQ"
-DATA_NAME="wiki2016_lower_min$MIN_FREQ"
+DATA_NAME="wiki2016_min$MIN_FREQ"
+#DATA_NAME="wiki2016_lower_min$MIN_FREQ"
 OUTPUT_DIR="./data/processed/$DATA_NAME/"
 
 GLOVE_IN="/iesl/data/word_embedding/glove.840B.300d.txt"
@@ -31,7 +31,8 @@ echo "filter word embedding"
 echo "convert indices to tensor"
 #~/anaconda3/bin/python src/preprocessing/map_indices_to_tensors.py --data $OUTPUT_DIR --save $OUTPUT_DIR/$TENSOR_FOLDER/ --max_sent_len $MAX_SENT_LEN --multi_sent $MULTI_SENT
 
-TENSOR_FOLDER="tensors_multi150"
+TENSOR_FOLDER="tensors_multi150_div"
 MAX_SENT_LEN="150"
 MULTI_SENT="True"
-#~/anaconda3/bin/python src/preprocessing/map_indices_to_tensors.py --data $OUTPUT_DIR --save $OUTPUT_DIR/$TENSOR_FOLDER/ --max_sent_len $MAX_SENT_LEN --multi_sent $MULTI_SENT
+DIV_SENT_NUM="True"
+~/anaconda3/bin/python src/preprocessing/map_indices_to_tensors.py --data $OUTPUT_DIR --save $OUTPUT_DIR/$TENSOR_FOLDER/ --max_sent_len $MAX_SENT_LEN --multi_sent $MULTI_SENT --div_sent_num $DIV_SENT_NUM #--max_sent_num 10000

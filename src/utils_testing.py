@@ -52,8 +52,8 @@ def add_model_arguments(parser):
                         help='number of basis we want to predict')
     parser.add_argument('--positional_option', type=str, default='linear',
                         help='options of encode positional embedding into models (linear, cat, add)')
-    parser.add_argument('--linear_mapping_dim', type=int, default=0,
-                        help='map the input embedding by linear transformation')
+    #parser.add_argument('--linear_mapping_dim', type=int, default=0,
+    #                    help='map the input embedding by linear transformation')
     #parser.add_argument('--postional_option', type=str, default='linear',
     #                help='options of encode positional embedding into models (linear, cat, add)')
     parser.add_argument('--dropoutp', type=float, default=0,

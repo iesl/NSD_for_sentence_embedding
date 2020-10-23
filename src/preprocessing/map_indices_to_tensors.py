@@ -25,6 +25,8 @@ parser.add_argument('--max_sent_len', type=int, default=50,
 #parser.add_argument('--multi_sent', default=False, action='store_true',
 parser.add_argument('--multi_sent', default=False, 
                     help='Whether do we want to cram multiple sentences into one input feature')
+parser.add_argument('--div_sent_num', default=False, 
+                    help='If we want to cram multiple sentences into one input feature, whether we want to diversify the number of sentences')
 parser.add_argument('--max_target_num', type=int, default=30,
                     help='max word number for output prediction w/o stop words (including above and below sentences)')
 parser.add_argument('--max_sent_num', type=int, default='100000000000',
@@ -120,6 +122,8 @@ all_targets = torch.zeros(corpus_size,args.max_target_num,dtype = store_type)
 
 random_selection_num = 0
 
+sentence_num_count_arr = [0] * 100
+
 for i in range(1,len(w_ind_corpus)-1):
     output_i = i - 1
     if args.multi_sent:
@@ -132,11 +136,16 @@ for i in range(1,len(w_ind_corpus)-1):
             current_len += sent_len
             if current_len > args.max_sent_len - 1:
                 break
+            if args.div_sent_num and j>i and sentence_num_count_arr[j-i-1] < sentence_num_count_arr[j-i]:
+                break
             feature_list += w_ind_list
-        if current_len > args.max_sent_len - 1:
+        get_j_idx = j
+        if current_len > args.max_sent_len - 1 or (args.div_sent_num and j>i and sentence_num_count_arr[j-i-1] < sentence_num_count_arr[j-i]):
             current_len = current_len_prev
-        feature_list.append(w_ind_corpus[j-1][-1])
-        next_sent_ind = j
+            get_j_idx = j - 1
+        feature_list.append(w_ind_corpus[get_j_idx][-1])
+        sentence_num_count_arr[get_j_idx-i] += 1
+        next_sent_ind = get_j_idx + 1
     else:
         feature_list = w_ind_corpus[i]
         current_len = len(feature_list) - 1
@@ -173,6 +182,9 @@ for i in range(1,len(w_ind_corpus)-1):
 #        random_selection_num += 1
 
 del w_ind_corpus
+
+if args.multi_sent:
+    print('sentence_num_count_arr: '+str(sentence_num_count_arr) )
 
 print("{} / {} needs to randomly select targets".format(random_selection_num,corpus_size))
 

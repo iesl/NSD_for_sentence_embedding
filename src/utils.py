@@ -128,11 +128,11 @@ class F2SetDataset(torch.utils.data.Dataset):
         return self.feature.size(0)
 
     def __getitem__(self, idx):
-        feature = torch.tensor(self.feature[idx, :], dtype = torch.long, device = self.output_device)
+        feature = self.feature[idx, :].to( dtype = torch.long, device = self.output_device)
         if self.target is None:
             target = []
         else:
-            target = torch.tensor(self.target[idx, :], dtype = torch.long, device = self.output_device)
+            target = self.target[idx, :].to( dtype = torch.long, device = self.output_device)
         #debug target[-1] = idx
         return [feature, target]
         #return [self.feature[idx, :], self.target[idx, :]]
@@ -157,9 +157,9 @@ def create_data_loader_split(f_in, bsz, device, split_num, copy_training):
         dataset_arr = [ F2SetDataset(feature[i:feature.size(0):split_num,:], target[i:target.size(0):split_num,:], device) for i in range(split_num)]
 
     use_cuda = False
-    if device.type == 'cude':
+    if device.type == 'cuda':
         use_cuda = True
-    dataloader_arr = [torch.utils.data.DataLoader(dataset_arr[i], batch_size = bsz, shuffle = True, pin_memory=use_cuda, drop_last=False) for i in range(split_num)]
+    dataloader_arr = [torch.utils.data.DataLoader(dataset_arr[i], batch_size = bsz, shuffle = True, pin_memory=not use_cuda, drop_last=False) for i in range(split_num)]
     return dataloader_arr, max_sent_len
 
 def create_data_loader(f_in, bsz, device, want_to_shuffle = True):
@@ -169,9 +169,9 @@ def create_data_loader(f_in, bsz, device, want_to_shuffle = True):
     dataset = F2SetDataset(feature, target, device)
     #dataset = F2SetDataset(feature[0:feature.size(0):2,:], target[0:target.size(0):2,:], device)
     use_cuda = False
-    if device.type == 'cude':
+    if device.type == 'cuda':
         use_cuda = True
-    return torch.utils.data.DataLoader(dataset, batch_size = bsz, shuffle = want_to_shuffle, pin_memory=use_cuda, drop_last=False)
+    return torch.utils.data.DataLoader(dataset, batch_size = bsz, shuffle = want_to_shuffle, pin_memory=not use_cuda, drop_last=False)
 
 def convert_sent_to_tensor(proc_sent_list, max_sent_len, word2idx):
     store_type = torch.int32
@@ -203,9 +203,9 @@ def load_testing_article_summ(word_d2_idx_freq, article, max_sent_len, eval_bsz,
     feature_tensor = convert_sent_to_tensor(article, max_sent_len, word_d2_idx_freq)
     dataset = F2SetDataset(feature_tensor, None, device)
     use_cuda = False
-    if device.type == 'cude':
+    if device.type == 'cuda':
         use_cuda = True
-    dataloader_test = torch.utils.data.DataLoader(dataset, batch_size = eval_bsz, shuffle = False, pin_memory=use_cuda, drop_last=False)
+    dataloader_test = torch.utils.data.DataLoader(dataset, batch_size = eval_bsz, shuffle = False, pin_memory=not use_cuda, drop_last=False)
     return dataloader_test
 
 def load_testing_sent(dict_path, input_path, max_sent_len, eval_bsz, device):

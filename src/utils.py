@@ -160,6 +160,7 @@ def create_data_loader_split(f_in, bsz, device, split_num, copy_training):
     if device.type == 'cuda':
         use_cuda = True
     dataloader_arr = [torch.utils.data.DataLoader(dataset_arr[i], batch_size = bsz, shuffle = True, pin_memory=not use_cuda, drop_last=False) for i in range(split_num)]
+    #dataloader_arr = [torch.utils.data.DataLoader(dataset_arr[i], batch_size = bsz, shuffle = True, pin_memory=not use_cuda, drop_last=True) for i in range(split_num)]
     return dataloader_arr, max_sent_len
 
 def create_data_loader(f_in, bsz, device, want_to_shuffle = True):
@@ -172,6 +173,7 @@ def create_data_loader(f_in, bsz, device, want_to_shuffle = True):
     if device.type == 'cuda':
         use_cuda = True
     return torch.utils.data.DataLoader(dataset, batch_size = bsz, shuffle = want_to_shuffle, pin_memory=not use_cuda, drop_last=False)
+    #return torch.utils.data.DataLoader(dataset, batch_size = bsz, shuffle = want_to_shuffle, pin_memory=not use_cuda, drop_last=True)
 
 def convert_sent_to_tensor(proc_sent_list, max_sent_len, word2idx):
     store_type = torch.int32

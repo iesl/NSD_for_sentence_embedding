@@ -153,6 +153,7 @@ class EMB2SEQ(nn.Module):
 
         #self.out_linear = nn.Linear(nhid, outd, bias=False)
         self.out_linear = nn.Linear(self.dep_learner.output_dim, outd)
+        #self.final_linear_arr = nn.ModuleList([nn.Linear(outd, outd) for i in range(n_basis)])
         
         self.coeff_model = coeff_model
         if coeff_model == "LSTM":
@@ -230,6 +231,7 @@ class EMB2SEQ(nn.Module):
         #output = self.layernorm(output.permute(1,0,2)).permute(1,0,2)
         #output /= self.outd_sqrt
         output = self.out_linear(output)
+        #output = torch.cat( [self.final_linear_arr[i](output[i,:,:]).unsqueeze(dim = 0)  for i in range(self.n_basis) ] , dim = 0 )
         #output = output / (0.000000000001 + output.norm(dim = 2, keepdim=True) )
         output_batch_first = output.permute(1,0,2)
 
@@ -243,6 +245,7 @@ class EMB2SEQ(nn.Module):
             #coeff_input= torch.cat( (input, output), dim = 2)
             coeff_input= torch.cat( (emb, output), dim = 2)
             if self.coeff_model == "LSTM":
+                self.coeff_rnn.flatten_parameters()
                 #coeff_output, coeff_hidden = self.coeff_rnn(coeff_input, hidden_init)
                 coeff_output, coeff_hidden = self.coeff_rnn(coeff_input.detach()) #default hidden state is 0
             elif self.coeff_model == "TRANS":

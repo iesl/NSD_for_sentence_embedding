@@ -120,8 +120,8 @@ elif args.method_set != 'bert':
     word_norm_emb[0,:] = 0
 
 if 'bert' in args.method_set:
-    BERT_model_path = 'bert-base-cased'
-    #BERT_model_path = 'bert-large-cased'
+    #BERT_model_path = 'bert-base-cased'
+    BERT_model_path = 'bert-large-cased'
     lower_case = False
     bert_tokenizer = BertTokenizer.from_pretrained(BERT_model_path, cache_dir = bert_dir + '/cache_dir/', do_lower_case = lower_case)
     bert_max_len = 2 + 500
@@ -445,6 +445,7 @@ abstract_list = []
 
 stories = os.listdir(args.input)
 for file_name in stories:
+#for file_name in ['1.story','2.story']:
     print("Processing "+ file_name)
     sys.stdout.flush()
     #base_name = os.path.basename(file_name)
